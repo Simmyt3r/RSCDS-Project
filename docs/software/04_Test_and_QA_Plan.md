@@ -1,6 +1,6 @@
 # Software Testing and Quality Assurance Plan
 ## Remote Settlement Change Detection System (RSCDS)
-**Version:** 1.1
+**Version:** 1.0
 **Date:** 9 October 2026
 
 ## 1. Quality objectives
@@ -35,13 +35,13 @@ Compute TP, FP, FN and TN against the same task definition and matching rule. Pr
 Synthetic arrays are allowed for correctness tests and must be clearly labelled synthetic. Field-labelled sites require permission, documented sourcing and sensitive-coordinate controls. Record scene IDs and observation windows. Keep operational observations out of public CI artifacts. Do not make high-risk maps public without human review.
 
 ## 7. Release gates
-Gate A: all unit tests pass. Gate B: API+database integration works in a secure test environment. Gate C: real Sentinel image job successfully produces a provenance-rich GeoJSON. Gate D: at least two independent analysts verify a sample of candidates with agreement statistics. Gate E: accuracy and failure modes satisfy an externally agreed threshold. Gate A is automated in repository CI. Gates B through E remain environment- and evidence-dependent and must not be marked complete without the required deployed services and independent validation.
+Gate A: all unit tests pass. Gate B: API+database integration works in a secure test environment. Gate C: real Sentinel image job successfully produces a provenance-rich GeoJSON. Gate D: at least two independent analysts verify a sample of candidates with agreement statistics. Gate E: accuracy and failure modes satisfy an externally agreed threshold. The current prototype can at most satisfy Gate A locally until external integration is complete.
 
 ## 8. Defect handling
 Maintain a defect register with severity, reproducible input scene IDs, trace/log ID, responsible developer, fix version and regression test. Prioritize security and privacy leaks ahead of cosmetic issues. Mark false detections as review outcomes rather than removing them, preserving evidence of model limitations.
 
 
-## 9. Acceptance criteria (v0.2)
+## v0.2 acceptance criteria
 - Browser-only steps include Vercel import, encrypted variables, Aiven PG Studio migration, automated health check, and GitHub workflow dispatch, without a required command-line setup.
 - Node tests reject open GeoJSON rings, out-of-range coordinates, empty polygons and invalid provenance.
 - Source migrations published for the setup page are byte-for-byte equal to the canonical SQL script.
@@ -49,17 +49,3 @@ Maintain a defect register with severity, reproducible input scene IDs, trace/lo
 - The cloud analysis workflow does not publish a raw GeoJSON artifact to a public repository.
 - Aiven's namespaced tables and spatial indexes exist and are readable, without altering unrelated application tables.
 - Production deployment, STAC scene access, actual raster downloads and real field detection accuracy require separate empirical validation after the dashboard is deployed.
-
-
-## 10. Test traceability and evidence
-
-| Quality area | Current automated evidence | Additional evidence required |
-|---|---|---|
-| API validation and authorization behavior | `tests/api.test.js` | Deployed Vercel/Aiven integration |
-| Documentation/schema consistency | `tests/consistency.test.js` | Review after structural changes |
-| Change-detection arithmetic and masks | `tests/test_detector.py` | Real-scene regression set |
-| Candidate import safeguards | `tests/test_import.py` | Live protected API and PostGIS test |
-| Node/Python CI execution | `.github/workflows/tests.yml` | Required green run on release commit |
-| Scientific validity | Not established by software tests | Independent labels, spatial holdout, precision/recall/F1/IoU and false-alert analysis |
-
-A software release may be considered technically buildable when automated tests pass, but the system must still be described as an unvalidated candidate-change detector until the scientific evaluation gates are completed.

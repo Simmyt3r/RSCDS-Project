@@ -1,6 +1,6 @@
 # Deployment, Configuration and Operations Manual
 ## Remote Settlement Change Detection System (RSCDS)
-**Version:** 1.2 (browser-only cloud setup)
+**Version:** 1.1 (browser-only cloud setup)
 **Target:** Vercel dashboard, Aiven PG Studio/PostGIS, GitHub Actions analysis runner
 
 ## 1. Objective and deployment model
@@ -34,9 +34,9 @@ Open the production URL and select **Deploy & configure → Check this website**
 
 ## 7. Step 6: Configure GitHub Actions in the UI
 
-In the GitHub repository select Settings → Secrets and variables → Actions. Add a **repository variable** `RSCDS_DEPLOY_URL` containing the exact HTTPS origin, for example `https://your-app.vercel.app` with no path, query or secret. Add a **repository secret** `RSCDS_ADMIN_API_KEY` containing the same key stored under Vercel settings. The GitHub workflow will validate both values, analyze a public/non-sensitive study area and POST at most 100 features per request to the authenticated API. The API's fingerprints make retries deduplicate instead of creating duplicate candidates. The workflow does **not** upload raw candidate geometry as a public Actions artifact.
+In the GitHub repository select Settings → Secrets and variables → Actions. Add a **repository variable** `RSCDS_DEPLOY_URL` containing the exact HTTPS origin, for example `https://your-app.vercel.app` with no path, query or secret. Add a **repository secret** `RSCDS_WORKER_API_KEY` matching Vercel `WORKER_API_KEY`, distinct from the admin key. The GitHub workflow will validate both values, analyze a public/non-sensitive study area and POST at most 100 features per request to the authenticated API. The API's fingerprints make retries deduplicate instead of creating duplicate candidates. The workflow does **not** upload raw candidate geometry as a public Actions artifact.
 
-GitHub documentation: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow . Open Actions → Manual Satellite Analysis → Run workflow. Copy the bounding box and date-window values from the RSCDS Satellite imagery page. For sensitive communities, run in a private repository / trusted processor instead; even inputs to public workflow runs may be exposed.
+GitHub documentation: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow . Open Actions → Private Satellite Analysis Queue → Run workflow. No coordinates or dates are entered into GitHub Actions. For sensitive communities, run in a private repository / trusted processor instead; even inputs to public workflow runs may be exposed.
 
 ## 8. Validation and human review
 
@@ -59,19 +59,14 @@ Use Vercel → Deployments → Redeploy or promote a prior deployment, after che
 **Website loads but database not ready:** confirm Vercel environment values, HTTPS URL encoding for passwords, Aiven SSL and executed schema. **No Admin configured:** set `ADMIN_API_KEY` under Vercel settings and redeploy. **GitHub analysis reports missing settings:** add the GitHub variable and secret in Settings → Secrets and variables → Actions. **Unexpected duplicate candidate:** confirm PostGIS unique fingerprint index exists. **No scenes or no candidates:** broaden the date window, compare seasons and inspect actual cloud masking. **SQL schema copy fails:** open `scripts/schema.sql` directly in GitHub and copy it into Aiven PG Studio. Do not disable authentication to diagnose a failure.
 
 
-## 12. Operational release checklist
+## Operational upgrade: private queue workflow (v0.3, 9 October 2026)
 
-Before treating a deployment as the current project baseline, confirm all of the following:
+The browser dashboard now provides **Queue secure analysis**. Analysts no longer copy study-area coordinates into public GitHub Actions workflow inputs. Aiven stores protected analysis inputs in `rscds.analysis_jobs`; a scheduled GitHub worker obtains a short-lived lease through authenticated `/api/worker` and imports change candidates in private batches. The worker uses a distinct `WORKER_API_KEY` rather than the administrator key. Coordinates, satellite scene IDs and GeoJSON are deliberately absent from workflow console output and downloadable artifacts. The result still represents only *unverified change candidates*.
 
-- GitHub Actions test workflow is green for the release commit.
-- Aiven contains the current idempotent `scripts/schema.sql` objects and PostGIS extension.
-- Vercel has `DATABASE_URL` and a strong `ADMIN_API_KEY` configured as protected environment variables.
-- `GET /api/health` reports the expected database and administrator readiness without exposing credentials.
-- GitHub Actions contains `RSCDS_DEPLOY_URL` as a repository variable and `RSCDS_ADMIN_API_KEY` as a secret.
-- A non-sensitive trial AOI completes the manual satellite workflow and results appear as **unverified** candidates in the review interface.
-- No raw protected coordinates, API keys or database credentials appear in commits, workflow inputs, logs, screenshots or public artifacts.
-- Rollback remains possible through Vercel deployment history and additive database migration discipline.
+**Browser setup changes:** In Vercel Settings → Environment Variables, configure `DATABASE_URL`, `ADMIN_API_KEY`, and **`WORKER_API_KEY`**. The latter must be distinct from the administrator key. In GitHub Settings → Secrets and variables → Actions, configure variable `RSCDS_DEPLOY_URL` and secret `RSCDS_WORKER_API_KEY`. Ensure the variable contains only the HTTPS app origin (no paths); the secret must match Vercel's `WORKER_API_KEY`. Redeploy from Vercel's Deployments screen. Vercel's `/api/health` reports whether admin, worker and database settings are ready, without exposing secret values.
 
-### Operations ownership
+**New operator flow:** Open Satellite imagery, select bounding box up to 0.09° × 0.09°, select nonoverlapping before/after observation dates, unlock with administrator key, then press Queue secure analysis. The dashboard lists queued, running, completed and failed jobs. The scheduled GitHub workflow runs approximately every 30 minutes (subject to GitHub scheduling delays); operators may use GitHub's browser-only Run workflow action for an immediate queue check. If a job fails, investigate and press Retry in the private dashboard; partial imported detections are removed before reprocessing.
 
-The system administrator owns cloud configuration and secret rotation. The GIS/research reviewer owns evidence-based verification decisions. The software maintainer owns source, migrations and tests. No single automated worker output is sufficient to declare a newly established temporary settlement.
+**Data controls:** An Aiven schema migration adds `analysis_jobs` and a `job_id` foreign key on detections. Reviewers cannot access partial jobs. Use a private GitHub repository and dedicated trusted runner for sensitive humanitarian locations. An administrator key is not a substitute for full user roles or an independent data-protection assessment. Review before distributing raw coordinates.
+
+**Acceptance tests:** `npm test` includes request validation and log-sanitization coverage; Python tests include bounded chunk imports, sensitive-output suppression, and worker endpoint checks. These are functional tests; scientific field validation is still necessary.

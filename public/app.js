@@ -31,7 +31,53 @@ async function uploadGeoJSON(){
  }catch(e){$('upload-response').textContent=e.message;toast(e.message);}
  finally{button.disabled=false;}
 }
+function useAnalysisKey(){
+ const value=$('job-admin-key').value.trim();
+ if(!value){toast('Enter the administrator key first');return;}
+ state.key=value;$('admin-key').value=value;$('job-admin-key').value='';
+ $('job-notice').textContent='Administrator key active in this browser tab only.';
+ void getJobs();
+}
+async function getJobs(){
+ if(!state.key){$('job-results').textContent='Enter the administrator key and unlock analysis.';return;}
+ const box=$('job-results');box.textContent='Loading private queue...';
+ try{
+  const data=await request('/api/jobs');box.replaceChildren();
+  if(!data.jobs?.length){box.innerHTML='<div class="empty">No jobs yet. Select an area, choose dates, then queue an analysis.</div>';return;}
+  for(const job of data.jobs){
+   const row=document.createElement('div');row.className='job-row';
+   const summary=document.createElement('div');summary.className='job-summary';
+   const title=document.createElement('strong');title.textContent='Analysis '+job.id.slice(0,8);
+   const dates=document.createElement('small');dates.textContent=`${job.before_window} → ${job.after_window} · ${new Date(job.created_at).toLocaleString()}`;
+   const extent=document.createElement('small');extent.textContent='Private AOI: '+job.bbox.join(', ');
+   const status=document.createElement('span');status.className='job-status job-'+job.status;status.textContent=job.status;
+   summary.append(title,dates,extent);row.append(summary,status);
+   if(job.status==='completed'){
+    const count=document.createElement('small');count.textContent=`${job.result_count} newly stored candidate(s). Review evidence before verification.`;summary.append(count);
+   }
+   if(job.status==='failed'){
+    const detail=document.createElement('small');detail.textContent=job.error_message||'Processing failed';summary.append(detail);
+    const retry=document.createElement('button');retry.className='secondary';retry.textContent='Retry';retry.onclick=()=>retryJob(job.id,retry);row.append(retry);
+   }
+   box.append(row);
+  }
+ }catch(e){box.textContent=e.message;toast(e.message);}
+}
+async function retryJob(id,button){button.disabled=true;
+ try{await request('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'retry',id})});toast('Job queued again');await getJobs();}
+ catch(e){toast(e.message);}finally{button.disabled=false;}
+}
+async function queueAnalysis(){
+ if(!state.key)return toast('Unlock the analysis queue with your administrator key first');
+ const button=$('queue-analysis');button.disabled=true;
+ try{
+  const bbox=$('bbox').value.trim();const before=$('before').value.trim(),after=$('after').value.trim();
+  const response=await request('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,before,after,cloud_max:Number($('job-cloud').value),min_pixels:Number($('job-pixels').value)})});
+  $('job-notice').textContent='Queued job '+response.job.id.slice(0,8)+'. Worker checks every 30 minutes (sometimes later); use GitHub Actions to trigger a check immediately.';
+  toast('Private analysis queued');await getJobs();
+ }catch(e){$('job-notice').textContent=e.message;toast(e.message);}finally{button.disabled=false;}
+}
 async function health(){try{const h=await request('/api/health');const ready=h.database==='ready';$('systemstate').textContent='Website online';document.querySelector('.state-dot').classList.add('ok');$('db-pill').textContent='DB: '+h.database;$('db-pill').className='pill '+(ready?'ok':'');$('stat-db').textContent=ready?'Connected':h.database;$('setup-db').textContent=ready?'Ready':h.database;$('setup-auth').textContent=h.adminConfigured?'Configured':'Missing';}catch(e){$('systemstate').textContent='Check service';$('db-pill').textContent='Unavailable';}}
-window.addEventListener('load',()=>{initializeMap();health();buildCommand();document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('go-imagery').onclick=()=>tab('imagery');$('go-setup').onclick=()=>tab('setup');$('map-clear').onclick=clearMap;$('notice-close').onclick=()=>document.querySelector('.notice').remove();$('search-scenes').onclick=searchScenes;$('copy-command').onclick=()=>navigator.clipboard.writeText(buildCommand()).then(()=>toast('Analysis inputs copied for GitHub Actions'));$('save-key').onclick=()=>{state.key=$('admin-key').value;toast('Key used for requests in this browser tab; not persisted');getDetections();};$('load-detections').onclick=getDetections;$('upload-geojson').onclick=uploadGeoJSON;document.querySelectorAll('.copy-inline').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copy).then(()=>toast('Copied')));['bbox','before','after'].forEach(id=>$(id).addEventListener('input',buildCommand));});
+window.addEventListener('load',()=>{initializeMap();health();buildCommand();document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('go-imagery').onclick=()=>tab('imagery');$('go-setup').onclick=()=>tab('setup');$('map-clear').onclick=clearMap;$('notice-close').onclick=()=>document.querySelector('.notice').remove();$('search-scenes').onclick=searchScenes;$('copy-command').onclick=()=>navigator.clipboard.writeText(buildCommand()).then(()=>toast('Analysis inputs copied for GitHub Actions'));$('save-key').onclick=()=>{state.key=$('admin-key').value;toast('Key used for requests in this browser tab; not persisted');getDetections();getJobs();};$('load-detections').onclick=getDetections;$('upload-geojson').onclick=uploadGeoJSON;$('use-job-key').onclick=useAnalysisKey;$('queue-analysis').onclick=queueAnalysis;$('refresh-jobs').onclick=getJobs;document.querySelectorAll('.copy-inline').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copy).then(()=>toast('Copied')));['bbox','before','after'].forEach(id=>$(id).addEventListener('input',buildCommand));});
 
 window.addEventListener('rscds:toast',e=>toast(e.detail));

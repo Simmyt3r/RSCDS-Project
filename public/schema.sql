@@ -24,3 +24,25 @@ CREATE TABLE IF NOT EXISTS rscds.study_areas (
  is_sensitive BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS rscds_study_geom_idx ON rscds.study_areas USING GIST(geom);
+
+-- Private analysis queue; coordinates are never passed as GitHub Actions inputs.
+CREATE TABLE IF NOT EXISTS rscds.analysis_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bbox JSONB NOT NULL,
+  before_window TEXT NOT NULL,
+  after_window TEXT NOT NULL,
+  cloud_max DOUBLE PRECISION NOT NULL DEFAULT 35,
+  min_pixels INTEGER NOT NULL DEFAULT 9,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','running','completed','failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  lease_token UUID,
+  lease_expires TIMESTAMPTZ,
+  result_count INTEGER NOT NULL DEFAULT 0,
+  error_message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  started_at TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS rscds_job_queue_idx ON rscds.analysis_jobs(status,created_at);
+ALTER TABLE rscds.detections ADD COLUMN IF NOT EXISTS job_id UUID REFERENCES rscds.analysis_jobs(id);
+CREATE INDEX IF NOT EXISTS rscds_detection_job_idx ON rscds.detections(job_id);

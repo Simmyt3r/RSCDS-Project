@@ -1,8 +1,7 @@
 # Database Design and Data Dictionary
 ## Remote Settlement Change Detection System (RSCDS)
-**Version:** 1.1
-**Date:** 9 October 2026
-**Database:** Aiven PostgreSQL with PostGIS
+**Version:** 1.0
+**Database:** Aiven PostgreSQL 18 with PostGIS
 
 ## 1. Logical design and isolation
 The initial relational model has two application-specific tables in schema `rscds`. This isolation avoids collisions with other applications on the same PostgreSQL instance. The design is intentionally minimal. Imagery assets are not stored as BLOBs in a 1 GB free-tier database; the service retains lightweight polygon geometry, scores, provenance and reviews. `CREATE EXTENSION IF NOT EXISTS postgis` supplies spatial functions and geometry types.
@@ -30,7 +29,6 @@ The initial relational model has two application-specific tables in schema `rscd
 | area_m2 | FLOAT8 | Greater than 0 | Approximate area of changed object |
 | score | FLOAT8 | 0 to 1 | Uncalibrated candidate ranking score |
 | source | TEXT | Not null | Collection/catalog provenance |
-| feature_hash | CHAR(64) | Unique when populated | SHA-256 fingerprint used to suppress duplicate imports |
 | scene_before | TEXT | Nullable | Baseline STAC scene identifier |
 | scene_after | TEXT | Nullable | Comparison STAC scene identifier |
 | review_status | TEXT | unverified/verified/rejected | Verification state |
@@ -52,18 +50,5 @@ Confirm Aiven plan backup/retention policy through the service console, because 
 The next normalized iteration should introduce `analysis_runs(id,aoi_id,model_version,parameters,created_at)`, `satellite_scenes(id,provider,acquired_at,cloud_cover,stac_url)`, `labels(id,feature_id,label,analyst,evidence_type,created_at)`, `users(id,role,mfa_state)` and `audit_events(...)`. Introduce foreign keys and immutable decision history before multi-user operational use.
 
 
-## 9. Provenance and duplicate protection (v0.2)
+## v0.2 provenance and duplicate protection
 The `rscds.detections.feature_hash` column stores a 64-character SHA-256 fingerprint of canonical GeoJSON geometry, source, scene_before and scene_after. A unique index, `rscds_feature_hash_idx`, suppresses repeat inserts. The migration is idempotent, adding the column if an older table exists. `rscds.review_status` remains `unverified` on ingestion. Updating review status applies only to unverified records, requiring independent reviewer notes. The shared Aiven database is not renamed or reset by this script.
-
-
-## 10. Schema-to-code traceability
-
-| Database concern | Source of truth |
-|---|---|
-| Schema, tables, constraints and indexes | `scripts/schema.sql` |
-| GeoJSON geometry validation and insert transaction | `api/detections.js` |
-| Canonical candidate fingerprint | `api/_fingerprint.js` |
-| Review state transition | `api/review.js` |
-| Database connection handling | `api/_helpers.js` |
-
-The current database model intentionally stores derived candidate geometry and metadata rather than satellite raster files. Any future introduction of `analysis_runs`, scene catalogs, users or audit events requires an additive migration and corresponding update to this data dictionary.

@@ -35,8 +35,8 @@
         const response=await fetch('/api/health',{cache:'no-store'});
         if(!response.ok)throw Error('Health endpoint returned HTTP '+response.status);
         const result=await response.json();
-        const ready=result.database==='ready'&&result.adminConfigured===true;
-        status(`Website: online · Database: ${result.database||'unknown'} · Admin configured: ${result.adminConfigured?'yes':'no'}. ${ready?'Ready for authenticated review.':'Complete the pending settings in Vercel, then redeploy.'}`,ready);
+        const ready=result.database==='ready'&&result.adminConfigured===true&&result.workerConfigured===true;
+        status(`Website: online · Database: ${result.database||'unknown'} · Admin configured: ${result.adminConfigured?'yes':'no'} · Worker configured: ${result.workerConfigured?'yes':'no'}. ${ready?'Ready for authenticated review.':'Complete the pending settings in Vercel, then redeploy.'}`,ready);
       }catch(e){status('Website diagnostic failed: '+e.message,false);}
     });
   });
