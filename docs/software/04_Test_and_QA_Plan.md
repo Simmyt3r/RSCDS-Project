@@ -39,3 +39,13 @@ Gate A: all unit tests pass. Gate B: API+database integration works in a secure 
 
 ## 8. Defect handling
 Maintain a defect register with severity, reproducible input scene IDs, trace/log ID, responsible developer, fix version and regression test. Prioritize security and privacy leaks ahead of cosmetic issues. Mark false detections as review outcomes rather than removing them, preserving evidence of model limitations.
+
+
+## v0.2 acceptance criteria
+- Browser-only steps include Vercel import, encrypted variables, Aiven PG Studio migration, automated health check, and GitHub workflow dispatch, without a required command-line setup.
+- Node tests reject open GeoJSON rings, out-of-range coordinates, empty polygons and invalid provenance.
+- Source migrations published for the setup page are byte-for-byte equal to the canonical SQL script.
+- Python importer rejects insecure HTTP origins and URLs containing credentials or query parameters; upload sends at most 100 candidates per batch.
+- The cloud analysis workflow does not publish a raw GeoJSON artifact to a public repository.
+- Aiven's namespaced tables and spatial indexes exist and are readable, without altering unrelated application tables.
+- Production deployment, STAC scene access, actual raster downloads and real field detection accuracy require separate empirical validation after the dashboard is deployed.

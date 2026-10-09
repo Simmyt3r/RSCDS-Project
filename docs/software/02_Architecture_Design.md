@@ -46,3 +46,7 @@ The root project contains `public/` for static web assets, `api/` for Vercel fun
 
 ## 10. Design constraints and next iteration
 V0.1 selects the least cloudy single scene per period, so differences in sun angle, seasonality and acquisition geometry may still trigger false positives. Future work should implement multi-scene median composites, locally appropriate projected CRS, robust morphology/object features, scene-overlap checks, time-series persistence, spatial cross-validation, authenticated reviewer accounts, safe export controls and higher-resolution corroboration where legally available.
+
+
+## Browser-first deployment and protected cloud import (v0.2)
+The dashboard is imported via Vercel's GitHub UI with Framework Preset **Other** and static Output Directory **public**. Aiven PG Studio SQL editor applies `scripts/schema.sql` without CLI dependencies. GitHub's manually dispatched Python worker POSTs candidate GeoJSON via a protected administrator bearer token to the Vercel API; it does not publish GitHub workflow artifacts containing exact geometry. The API validates GeoJSON rings and bounds, runs batch inserts in a PostgreSQL transaction, and hashes geometry/source/scene IDs to suppress duplicate retries. Human verification remains separate from automated detection. Public repositories are not acceptable for sensitive AOIs because workflow inputs and metadata may disclose geography.

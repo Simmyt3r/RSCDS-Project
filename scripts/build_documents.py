@@ -64,7 +64,7 @@ def make(infile,outfile,research):
  for value in title_lines[:7]:
   pp=doc.add_paragraph();pp.alignment=WD_ALIGN_PARAGRAPH.CENTER;pp.paragraph_format.space_before=Pt(10);rr=pp.add_run(re.sub(r'\*\*','',value));rr.font.size=Pt(12.5 if research else 11.2)
  note=doc.add_paragraph();note.alignment=WD_ALIGN_PARAGRAPH.CENTER;note.paragraph_format.space_before=Pt(25)
- note.add_run('RESEARCH DRAFT • INTEGRATION/EMPIRICAL VALIDATION STATUS EXPLICITLY REPORTED' if research else 'VERSION 1.0 • IMPLEMENTATION BASELINE').bold=True
+ note.add_run('RESEARCH DRAFT • INTEGRATION/EMPIRICAL VALIDATION STATUS EXPLICITLY REPORTED' if research else 'RELEASE DOCUMENTATION • OCTOBER 2026').bold=True
  doc.add_page_break()
  reading_refs=False
  i=body_start

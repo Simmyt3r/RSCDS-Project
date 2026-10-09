@@ -56,3 +56,11 @@ The MVP excludes individual tent recognition, identifying occupants, high-freque
 
 ## 9. Baseline sign-off
 This document is an engineering baseline rather than a claim that all requirements have passed acceptance testing. Sign-off fields: Product owner __________; supervisor __________; date __________.
+
+
+## v0.2 deployment usability requirements
+- The operator shall be able to use Vercel, Aiven and GitHub web dashboards without any mandatory terminal setup commands.
+- The web setup assistant shall provide links to vendor dashboards, show copyable canonical SQL, generate a strong local browser key and display non-sensitive readiness diagnostics.
+- The satellite imagery page shall present GitHub Actions form inputs rather than command-line invocation instructions.
+- The analysis worker shall privately import records using secrets, avoiding public artifacts containing sensitive geometry; the publicly visible GitHub inputs may be used only for non-sensitive study areas.
+- The API shall reject malformed polygon rings, prevent duplicate candidate inserts, and ensure every new candidate starts unverified.

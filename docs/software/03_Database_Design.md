@@ -48,3 +48,7 @@ Confirm Aiven plan backup/retention policy through the service console, because 
 
 ## 8. Planned v2 schema
 The next normalized iteration should introduce `analysis_runs(id,aoi_id,model_version,parameters,created_at)`, `satellite_scenes(id,provider,acquired_at,cloud_cover,stac_url)`, `labels(id,feature_id,label,analyst,evidence_type,created_at)`, `users(id,role,mfa_state)` and `audit_events(...)`. Introduce foreign keys and immutable decision history before multi-user operational use.
+
+
+## v0.2 provenance and duplicate protection
+The `rscds.detections.feature_hash` column stores a 64-character SHA-256 fingerprint of canonical GeoJSON geometry, source, scene_before and scene_after. A unique index, `rscds_feature_hash_idx`, suppresses repeat inserts. The migration is idempotent, adding the column if an older table exists. `rscds.review_status` remains `unverified` on ingestion. Updating review status applies only to unverified records, requiring independent reviewer notes. The shared Aiven database is not renamed or reset by this script.
