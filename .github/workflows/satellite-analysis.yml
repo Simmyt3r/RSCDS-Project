@@ -1,0 +1,36 @@
+name: Manual Satellite Analysis
+on:
+  workflow_dispatch:
+    inputs:
+      bbox:
+        description: 'minLon,minLat,maxLon,maxLat (max 0.5 deg each)'
+        required: true
+      before:
+        description: 'YYYY-MM-DD/YYYY-MM-DD'
+        required: true
+      after:
+        description: 'YYYY-MM-DD/YYYY-MM-DD'
+        required: true
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements-worker.txt
+      - name: Analyze Sentinel-2
+        env:
+          BBOX: ${{ inputs.bbox }}
+          BEFORE: ${{ inputs.before }}
+          AFTER: ${{ inputs.after }}
+        run: python worker/analyze.py --bbox "$BBOX" --before "$BEFORE" --after "$AFTER" --out outputs/change.geojson
+      - name: Save private review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unverified-change-candidates
+          path: outputs/change.geojson
+          retention-days: 7

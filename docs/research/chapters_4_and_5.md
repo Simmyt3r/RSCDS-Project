@@ -1,0 +1,57 @@
+# CHAPTER FOUR: SYSTEM IMPLEMENTATION, TESTING AND PRELIMINARY RESULTS
+## 4.1 Introduction
+This chapter describes the software artefact implemented during the research prototype stage and reports only results that can be substantiated from local test execution. It does not invent satellite classification accuracy, site counts or settlement discoveries. Empirical evaluation against independently confirmed temporary settlements remains a required later research activity. The chapter separates functional implementation results, synthetic tests, external service integration and eventual research findings.
+
+## 4.2 Implementation environment
+The web layer uses static responsive HTML, CSS and browser-side JavaScript served by Vercel, with Node.js serverless APIs handling STAC metadata queries and authenticated PostGIS operations. The satellite worker uses Python, NumPy, SciPy, rasterio, pyproj and pystac-client. Aiven PostgreSQL with PostGIS is the nominated database. Source files are divided into `/public`, `/api`, `/worker`, `/scripts`, `/tests` and `/docs`, enabling independent testing of UI, scientific processing and data management. Access credentials are supplied through environment configuration and are excluded from source control.
+
+## 4.3 Implemented website modules
+The overview dashboard summarises provider availability, database readiness, candidate counts and the human review pipeline. A Leaflet map permits an analyst to select a limited AOI using two corners. The imagery page accepts before and after date windows and queries an Earth Search serverless endpoint for actual Sentinel-2 scene metadata; the results show scene ID, date and cloud-cover percentage. The candidate page requires a bearer key before retrieving protected geographic records and can import GeoJSON FeatureCollections. The review workspace requires an analyst's name and evidence notes before changing a record to verified or rejected. The setup page documents the local interactive script, the PostGIS migration and Vercel environment configuration.
+
+## 4.4 Implemented image-analysis procedure
+The Python worker searches Sentinel-2 Collection 1 Level-2A catalog items for compatible assets and selects the lowest-cloud metadata item from each time window. It warps bands to one grid, applies reflectance scale/offset metadata, obtains a per-pixel SCL cloud mask and rejects scenes with inadequate mutually usable pixels. It computes vegetation, brightness and NDBI changes and groups thresholded pixels into contiguous candidate objects. Each exported polygon includes scene identifiers, source provenance, area, ranking score and mandatory unverified status. The method is interpretable but is not a trained settlement classifier. It will not necessarily detect small roofs or shelters.
+
+## 4.5 Database implementation
+A namespaced SQL migration creates `rscds.study_areas` and `rscds.detections` with WGS84 spatial geometry, GiST indexes, review constraints and provenance columns. The migration is intended for Aiven PostgreSQL with PostGIS and avoids overwriting other application tables. The data workflow records all imported polygons as unverified. A database connection string is required for live persistence. At the time of drafting, database migration and API-to-Aiven integration have not been demonstrated through an end-to-end acceptance run, so that acceptance item remains open.
+
+## 4.6 Functional unit-test results
+The Python detector was evaluated using synthetic before-and-after reflectance arrays and controlled masks. Five tests passed: mathematical NDVI operation, detection of strong synthetic vegetation removal, suppression of fully invalid imagery, unchanged-scene suppression and exclusion of patches smaller than the configured component size. Five JavaScript tests passed: valid bounding box, oversized box rejection, date window parsing, reversed period rejection, and rejection of preverified imports. These tests demonstrate the relevant functions on their test fixtures, not real-world accuracy. The exact test output should be retained as a reproducibility appendix.
+
+| Test group | Tests executed | Passed | Scope and evidence |
+|---|---|---|---|
+| Python change-detector unit tests | 5 | 5 | Synthetic rasters and masks; successful local pytest run |
+| JavaScript validation unit tests | 5 | 5 | Node.js test runner; successful local run |
+| Live STAC/COG integration | Not yet executed | Not established | Requires networked job and selected real AOIs |
+| Aiven migration/import/review integration | Not yet executed | Not established | Requires approved database and configured secrets |
+| Geographically held-out settlement accuracy | Not yet executed | Not established | Requires independent ground-truth dataset |
+
+## 4.7 Interpretation of preliminary results
+The tests show that the implemented baseline behaves as intended under controlled synthetic conditions. In particular, it does not automatically emit detections from identical arrays and does not process masked-out imagery as valid evidence. This is necessary but insufficient for the research aim. A high false-positive rate may still occur in real agricultural landscapes, and clouds, seasonality, resolution and different reflectance levels may affect performance. Because there is not yet an independently verified multi-site dataset, the study cannot report precision, recall, F1 or IoU for temporary settlement detection. Any numeric accuracy claim would be unsupported.
+
+## 4.8 Pending real-image experiment protocol
+A subsequent experiment should pre-register comparison windows for known change and no-change areas. For each run, the research team will archive STAC scene identifiers, pixel validity fraction, source licensing, algorithm parameters and candidate geometry in a protected research register. Independent reviewers will classify candidates while blinded to model scores where feasible. The project will then compare the heuristic baseline and any trained classifier on geographically held-out sites using agreed object matching criteria. False alerts from farmland, construction, erosion, burn scars and other surface processes should be tabulated separately. Until that work occurs, all polygons must remain research candidates rather than verified discoveries.
+
+## 4.9 System limitations encountered
+Several architectural limitations are deliberately visible. Scene search uses a third-party public catalog without guaranteed uptime. The current worker selects one scene per period, which may not capture a consistent land-cover state. Cloud masks and reprojection mitigate but do not eliminate acquisition differences. A capped raster grid may downsample a broad study extent, weakening sensitivity to small features. Web Mercator area measurements require correction to a local metric CRS for rigorous area estimates. The prototype uses one administrator key instead of named reviewer accounts and must be upgraded before multi-team use. These issues are documented development priorities rather than hidden defects.
+
+## 4.10 Chapter summary
+The prototype demonstrates a traceable design path from public satellite data to candidate polygon extraction and controlled review, with local synthetic-unit correctness demonstrated. Its field accuracy, live satellite retrieval, persistent Aiven integration and ethics approval for specific study areas remain outstanding. The next phase should prioritize real-scene evaluation, geographic holdout, supervised labels and stronger authentication.
+
+# CHAPTER FIVE: SUMMARY, CONCLUSIONS AND RECOMMENDATIONS
+## 5.1 Summary of the study
+The study addressed the problem of identifying candidate newly established temporary settlement areas in remote regions using accessible satellite imagery and computational analysis. Chapters One and Two established the distinction between remote-sensing evidence of land-cover change and human confirmation of settlement establishment, while Chapter Three proposed a design-science and experimental validation methodology. Chapter Four reported a functioning software prototype design, its key implemented modules and successful controlled unit tests, while acknowledging unfinished real-world validation.
+
+## 5.2 Summary of contributions
+The engineering contribution is an integrated but modular workflow: public Sentinel-2 scene discovery, a reproducible Python two-date comparison worker, a provenance-rich GeoJSON format, Aiven/PostGIS data structures, a Vercel-compatible dashboard and a protected human review mechanism. The methodological contribution is an explicit boundary between unverified spectral change, optional trained classification and human-evidenced verification. The documentation supplies reproducibility requirements, test cases and a planned independent evaluation protocol. The project does not claim a new remote-sensing algorithm or validated performance advantage over existing methods.
+
+## 5.3 Conclusions
+Based on implemented source code and controlled unit tests, it is feasible to construct a low-cost research pipeline for identifying areas of significant spectral land-cover change and presenting them for responsible human review. The present evidence does not establish that the system reliably identifies temporary settlements in real-world remote imagery. This distinction is important because small shelters may occupy less than one satellite pixel and because many nonsettlement activities create similar surface changes. Scientific success will depend on independent labels, appropriate sensor resolution, geographic generalisation tests and risk-sensitive use of detailed coordinates.
+
+## 5.4 Recommendations
+First, conduct actual Sentinel-2 retrieval and cloud-masked analysis runs on several carefully documented sites, including difficult negative cases. Second, develop a geographically independent reference dataset with at least two reviewers and an adjudication procedure. Third, evaluate and tune the interpretable baseline before introducing random forests or more complex neural networks. Fourth, use seasonal composites and locally appropriate coordinate systems for reliable comparisons. Fifth, strengthen role-based access, audit logging, secret management and sensitive-location disclosure controls before operational deployment. Sixth, consider appropriately licensed higher-resolution imagery or radar data when small structures or persistent cloud cover make Sentinel-2 insufficient.
+
+## 5.5 Suggested future research
+Research extensions include multi-temporal compositing to distinguish ephemeral changes, weak supervision with uncertainty-aware labels, satellite radar fusion, object-level segmentation, cross-country domain adaptation, physically meaningful area estimates and user-centred evaluation of analyst workload. These should be undertaken only when there is a reliable validation dataset and safeguards against misuse. The final research assessment should report both prediction quality and the practical consequences of false positives and false negatives.
+
+## 5.6 Final statement
+A responsible detection system should state what it observed, how it observed it, how uncertain the inference remains and who verified the conclusion. The current artefact offers a credible foundation for that approach. It should be described as a candidate-change detection research prototype until independent evaluation demonstrates suitability for the more ambitious task of identifying newly established temporary settlements.
