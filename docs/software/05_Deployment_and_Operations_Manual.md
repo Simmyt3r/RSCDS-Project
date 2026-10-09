@@ -1,6 +1,6 @@
 # Deployment, Configuration and Operations Manual
 ## Remote Settlement Change Detection System (RSCDS)
-**Version:** 1.1 (browser-only cloud setup)
+**Version:** 1.2 (browser-only cloud setup)
 **Target:** Vercel dashboard, Aiven PG Studio/PostGIS, GitHub Actions analysis runner
 
 ## 1. Objective and deployment model
@@ -57,3 +57,21 @@ Use Vercel → Deployments → Redeploy or promote a prior deployment, after che
 ## 11. Troubleshooting
 
 **Website loads but database not ready:** confirm Vercel environment values, HTTPS URL encoding for passwords, Aiven SSL and executed schema. **No Admin configured:** set `ADMIN_API_KEY` under Vercel settings and redeploy. **GitHub analysis reports missing settings:** add the GitHub variable and secret in Settings → Secrets and variables → Actions. **Unexpected duplicate candidate:** confirm PostGIS unique fingerprint index exists. **No scenes or no candidates:** broaden the date window, compare seasons and inspect actual cloud masking. **SQL schema copy fails:** open `scripts/schema.sql` directly in GitHub and copy it into Aiven PG Studio. Do not disable authentication to diagnose a failure.
+
+
+## 12. Operational release checklist
+
+Before treating a deployment as the current project baseline, confirm all of the following:
+
+- GitHub Actions test workflow is green for the release commit.
+- Aiven contains the current idempotent `scripts/schema.sql` objects and PostGIS extension.
+- Vercel has `DATABASE_URL` and a strong `ADMIN_API_KEY` configured as protected environment variables.
+- `GET /api/health` reports the expected database and administrator readiness without exposing credentials.
+- GitHub Actions contains `RSCDS_DEPLOY_URL` as a repository variable and `RSCDS_ADMIN_API_KEY` as a secret.
+- A non-sensitive trial AOI completes the manual satellite workflow and results appear as **unverified** candidates in the review interface.
+- No raw protected coordinates, API keys or database credentials appear in commits, workflow inputs, logs, screenshots or public artifacts.
+- Rollback remains possible through Vercel deployment history and additive database migration discipline.
+
+### Operations ownership
+
+The system administrator owns cloud configuration and secret rotation. The GIS/research reviewer owns evidence-based verification decisions. The software maintainer owns source, migrations and tests. No single automated worker output is sufficient to declare a newly established temporary settlement.

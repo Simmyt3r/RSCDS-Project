@@ -1,6 +1,6 @@
 # Software Requirements Specification
 ## Remote Settlement Change Detection System (RSCDS)
-**Version:** 1.0 (Research prototype)
+**Version:** 1.1 (Implementation-aligned research prototype)
 **Date:** 9 October 2026
 **Status:** Baseline specification; field validation pending
 
@@ -39,7 +39,7 @@ The RSCDS identifies candidate areas of significant land-cover change using open
 Browser UI communicates with GET /api/health, GET /api/scenes, GET/POST /api/detections and POST /api/review. The imagery service is Earth Search STAC. The database interface is an SSL PostgreSQL connection to Aiven. The worker writes GeoJSON (RFC 7946 coordinate order: longitude, latitude). The workflow runner may be GitHub Actions with manually provided nonsecret AOI parameters; production deployment should protect sensitive run artifacts.
 
 ## 6. Data requirements
-**Detection:** id, site_label, geometry, area_m2, score, source, before_scene, after_scene, review_status, reviewer, review_notes, reviewed_at, created_at. **Study area:** id, name, polygon geometry, sensitivity and creation date. A future release will add imagery scene catalog, run identifiers, versioned models, annotation datasets, role-based access and immutable audit events. No person-level characteristics are collected.
+**Detection:** id, site_label, geometry, area_m2, score, source, scene_before, scene_after, feature_hash, review_status, reviewer, review_notes, reviewed_at, created_at. **Study area:** id, name, polygon geometry, sensitivity and creation date. A future release will add imagery scene catalog, run identifiers, versioned models, annotation datasets, role-based access and immutable audit events. No person-level characteristics are collected.
 
 ## 7. Acceptance criteria and traceability
 | Requirement | Verification | Acceptance condition |
@@ -58,9 +58,23 @@ The MVP excludes individual tent recognition, identifying occupants, high-freque
 This document is an engineering baseline rather than a claim that all requirements have passed acceptance testing. Sign-off fields: Product owner __________; supervisor __________; date __________.
 
 
-## v0.2 deployment usability requirements
+## 10. Deployment usability requirements (v0.2)
 - The operator shall be able to use Vercel, Aiven and GitHub web dashboards without any mandatory terminal setup commands.
 - The web setup assistant shall provide links to vendor dashboards, show copyable canonical SQL, generate a strong local browser key and display non-sensitive readiness diagnostics.
 - The satellite imagery page shall present GitHub Actions form inputs rather than command-line invocation instructions.
 - The analysis worker shall privately import records using secrets, avoiding public artifacts containing sensitive geometry; the publicly visible GitHub inputs may be used only for non-sensitive study areas.
 - The API shall reject malformed polygon rings, prevent duplicate candidate inserts, and ensure every new candidate starts unverified.
+
+
+## 11. Implementation traceability
+
+| Requirement group | Current implementation |
+|---|---|
+| FR-01 to FR-03 | AOI/date validation and Sentinel-2 scene discovery in `api/scenes.js` and shared validators/helpers |
+| FR-04 to FR-07 | Raster processing and GeoJSON generation in `worker/analyze.py` and `worker/detector.py` |
+| FR-08 to FR-10 | Authenticated import, duplicate suppression and human review in `api/detections.js`, `api/review.js`, `api/_fingerprint.js` and `scripts/schema.sql` |
+| FR-11 | Deployment readiness via `api/health.js` and the browser setup workflow |
+| FR-12 | Optional supervised baseline in `worker/train_model.py`; production accuracy claims remain prohibited until independent evaluation |
+| NFR-01 to NFR-08 | Enforced across source provenance, bounded AOIs, private API access, CI tests, explicit unverified states and documentation warnings |
+
+**Current baseline:** The repository implements the candidate-change research workflow. It does not yet implement named user accounts, MFA, role-based authorization, immutable audit events, multi-scene compositing or validated temporary-settlement classification.

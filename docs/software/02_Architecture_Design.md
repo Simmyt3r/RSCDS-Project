@@ -1,6 +1,6 @@
 # Software Design and Architecture Document
 ## Remote Settlement Change Detection System (RSCDS)
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 9 October 2026
 
 ## 1. Architecture rationale
@@ -16,7 +16,7 @@ The browser is untrusted. A serverless API must validate every parameter and aut
 - **Database tier:** PostGIS spatial data types, GiST indexes and review status constraints within the isolated `rscds` schema.
 - **Processing tier:** `worker/analyze.py` runs STAC discovery, scene selection, resampling, cloud masks and two-date spectral differences.
 - **Optional learning tier:** `worker/train_model.py` trains a random forest against independently verified features with study-area-based holdout.
-- **CI tier:** test workflow validates the code; a manually triggered satellite-analysis workflow can produce an unverified private artifact.
+- **CI tier:** test workflow validates the code; a manually triggered satellite-analysis workflow runs the worker and imports unverified GeoJSON directly into the protected review API; raw candidate geometry is not uploaded as a workflow artifact.
 
 ## 4. Operational data flow
 **A. Acquisition:** analyst chooses a bounded AOI and two nonoverlapping time windows. STAC returns scene metadata and links to cloud-optimized pixel assets. **B. Preprocessing:** each band is reprojected onto a common grid; SCL is used to exclude cloud/shadow/invalid pixels. **C. Analysis:** NDVI, NDBI and visible-band brightness changes are computed; thresholded pixels are clustered into candidate objects. **D. Review:** candidate objects are exported as unverified polygons with scene IDs and source details, imported by an authenticated administrator, then accepted or rejected after documented evidence review.
@@ -48,5 +48,23 @@ The root project contains `public/` for static web assets, `api/` for Vercel fun
 V0.1 selects the least cloudy single scene per period, so differences in sun angle, seasonality and acquisition geometry may still trigger false positives. Future work should implement multi-scene median composites, locally appropriate projected CRS, robust morphology/object features, scene-overlap checks, time-series persistence, spatial cross-validation, authenticated reviewer accounts, safe export controls and higher-resolution corroboration where legally available.
 
 
-## Browser-first deployment and protected cloud import (v0.2)
+## 11. Browser-first deployment and protected cloud import (v0.2)
 The dashboard is imported via Vercel's GitHub UI with Framework Preset **Other** and static Output Directory **public**. Aiven PG Studio SQL editor applies `scripts/schema.sql` without CLI dependencies. GitHub's manually dispatched Python worker POSTs candidate GeoJSON via a protected administrator bearer token to the Vercel API; it does not publish GitHub workflow artifacts containing exact geometry. The API validates GeoJSON rings and bounds, runs batch inserts in a PostgreSQL transaction, and hashes geometry/source/scene IDs to suppress duplicate retries. Human verification remains separate from automated detection. Public repositories are not acceptable for sensitive AOIs because workflow inputs and metadata may disclose geography.
+
+
+## 12. Implementation traceability
+
+| Architectural concern | Repository implementation |
+|---|---|
+| Static presentation | `public/` |
+| Serverless HTTP API | `api/health.js`, `api/scenes.js`, `api/detections.js`, `api/review.js` |
+| Input validation and authentication helpers | `api/_validators.js`, `api/_helpers.js` |
+| Duplicate-resistant candidate identity | `api/_fingerprint.js` plus unique `feature_hash` index |
+| Spatial persistence | `scripts/schema.sql` using schema `rscds` and PostGIS |
+| Raster analysis | `worker/analyze.py`, `worker/detector.py` |
+| Optional model training | `worker/train_model.py` |
+| Automated verification | `.github/workflows/tests.yml` |
+| On-demand satellite analysis | `.github/workflows/satellite-analysis.yml` |
+| Vercel configuration | `vercel.json` and server-side environment variables |
+
+This mapping is the authoritative v1.1 architecture baseline for the current repository. Future changes that move responsibilities between these components should update this document in the same pull request or commit.
