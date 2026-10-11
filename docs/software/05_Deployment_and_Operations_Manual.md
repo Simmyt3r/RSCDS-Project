@@ -17,7 +17,7 @@ In https://console.aiven.io/ select the intended project and PostgreSQL service.
 
 ## 4. Step 3: Import to Vercel from its interface
 
-Visit https://vercel.com/new, choose Add New → Project, and import `Simmyt3r/RSCDS-Project` from GitHub. Choose Framework Preset: **Other**. Root Directory: `./`. Output Directory: **public** (also declared in `vercel.json`). Build Command: leave blank. The repository's `/api/*.js` files are Vercel Functions. If no GitHub repository is shown, use Vercel's GitHub integration connection flow and grant the necessary repository access.
+Visit https://vercel.com/new, choose Add New → Project, and import `Simmyt3r/RSCDS-Project` from GitHub. Choose Framework Preset: **Other**. Root Directory: `./`. Output Directory: **public** (also declared in `vercel.json`). Build Command: use the repository default, `npm run build` (already configured in `vercel.json`). The repository's `/api/*.js` files are Vercel Functions. If no GitHub repository is shown, use Vercel's GitHub integration connection flow and grant the necessary repository access.
 
 ## 5. Step 4: Server-side environment variables
 

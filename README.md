@@ -6,7 +6,7 @@
 
 ## Deploy using browser dashboards only
 
-1. **Vercel**: Open [New Project](https://vercel.com/new), import `Simmyt3r/RSCDS-Project`. Select framework **Other**, root `./`, output directory `public`, and leave Build Command blank. Vercel Git integration automatically redeploys after `main` updates.
+1. **Vercel**: Open [New Project](https://vercel.com/new), import `Simmyt3r/RSCDS-Project`. Select framework **Other**, root `./`, output directory `public`, and leave the Build Command override disabled; `vercel.json` supplies `npm run build`. Vercel Git integration automatically redeploys after `main` updates.
 2. **Aiven**: In [Aiven Console](https://console.aiven.io/), open the existing PostgreSQL service and PG Studio SQL editor. Apply `scripts/schema.sql` (idempotent, namespaced `rscds`). It adds a private analysis queue and candidates tables with PostGIS indexes and **never erases unrelated databases**. If this schema was already applied and updated by your administrator, skip reapplying.
 3. **Vercel** → Project Settings → Environment Variables (server-side sensitive, Production):
    - `DATABASE_URL`: Aiven PostgreSQL URI, TLS enabled; never put it in public source or in the client browser.
@@ -52,3 +52,13 @@ Browser (authenticated admin) ── POST /api/jobs ──► Aiven rscds.analys
 Five software engineering documents and Chapters 1–3 / Chapters 1–5 editable manuscripts live in `docs/` and `deliverables/`. The Word documents were generated for the initial research prototype; the latest browser-only operational configuration is maintained in `docs/software/05_Deployment_and_Operations_Manual.md`. No real-world accuracy metrics have yet been validated.
 
 Primary sources: [ESA Sentinel-2](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Sentinel-2) · [Element84 Earth Search STAC](https://earth-search.aws.element84.com/v1) · [Aiven PostGIS](https://aiven.io/docs/products/postgresql/reference/list-of-extensions) · [Vercel Git deployments](https://vercel.com/docs/deployments/git).
+
+## Vercel deploy validation (v0.3.2)
+
+Deployment is deliberately **UI-led**: import this GitHub repository using [Vercel New Project](https://vercel.com/new). `vercel.json` sets the **Other** framework (`null`), `public` output, automatic preflight build, and the `sfo1` Functions region to colocate API requests with the current Aiven San Francisco database. No Vercel CLI is needed.
+
+The build command `npm run build` validates the static assets, API endpoints, schema mirror, and setup instructions without requesting production secrets. GitHub Actions also runs this check on every push. If Vercel reports a build failure, inspect Deployments → Build Logs.
+
+Set `DATABASE_URL`, `ADMIN_API_KEY` and `WORKER_API_KEY` as server-only Production environment variables before redeploying. The two keys **must be different**. Copy the same worker key into GitHub Actions secret `RSCDS_WORKER_API_KEY`; set repository variable `RSCDS_DEPLOY_URL` to the HTTPS site origin. The setup wizard checks readiness and protected endpoint status on the live site.
+
+> This readiness validation checks source configuration and runtime guards, not scientific accuracy or a live end-to-end satellite analysis. Keep protected coordinates off public repository workflows.

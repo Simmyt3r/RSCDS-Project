@@ -34,3 +34,11 @@ The Aiven migration is in [`scripts/schema.sql`](scripts/schema.sql) and is idem
 - **`adminConfigured` or `workerConfigured` false**: Set the corresponding Vercel Production environment variable and redeploy.
 - **Queued job never starts**: Check the GitHub Actions variable `RSCDS_DEPLOY_URL`, worker secret, workflow status and scheduled-run history. Scheduled checks are best-effort, not guaranteed at an exact minute.
 - **Setup HTML local health check unavailable**: This is expected due to cross-origin browser protections. Use **Open health diagnostic** and read the public configuration flags; never add credentials to the query string.
+
+## Automated Vercel build checks
+
+The repository already supplies its build command in `vercel.json`: `npm run build`. **Do not manually override it with a conflicting command** when using Vercel's import UI. It performs a dependency-free source preflight, including assets, API endpoints and the SQL mirror. Vercel installs Node dependencies and discovers the `api/*.js` serverless routes.
+
+The application's browser setup guide (`/setup.html`) performs seven safe same-origin endpoint checks as well as `/api/health` readiness, including confirmation that ADMIN_API_KEY and WORKER_API_KEY are independently generated. The six-step guide does not collect or store provider secrets.
+
+If you are using the Aiven free service, monitor its connection limit. RSCDS uses a pool size of one per serverless invocation; the remaining database capacity may be shared with other apps.
