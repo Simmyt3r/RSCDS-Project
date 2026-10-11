@@ -1,7 +1,8 @@
 const $=id=>document.getElementById(id);
 const state={map:null,rectangle:null,points:[],key:'',detections:[],candidateLayer:null,selectedJob:null};
 function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),4200);}
-function tab(name){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(b=>b.classList.toggle('active',b.id==='tab-'+name));$('crumb').textContent=name[0].toUpperCase()+name.slice(1);if(name==='overview'&&state.map)setTimeout(()=>state.map.invalidateSize(),180);}
+function tab(name){return window.RSCDSNavigation?.go(name)||false;}
+window.addEventListener('rscds:overview-visible',()=>{if(state.map)setTimeout(()=>state.map.invalidateSize(),160);});
 async function request(url,options={}){const res=await fetch(url,{...options,headers:{...(options.headers||{}),...(state.key?{Authorization:'Bearer '+state.key}:{})}});const d=await res.json();if(!res.ok)throw Error(d.error||res.statusText);return d;}
 function textNode(el,s){el.textContent=s;return el;}
 function clearMap(){state.points=[];if(state.rectangle){state.rectangle.remove();state.rectangle=null;} $('map-coords').textContent='No region selected';}
@@ -115,7 +116,27 @@ async function queueAnalysis(){
  }catch(e){$('job-notice').textContent=e.message;toast(e.message);}finally{button.disabled=false;}
 }
 async function health(){try{const h=await request('/api/health');const ready=h.database==='ready';$('systemstate').textContent='Website online';document.querySelector('.state-dot').classList.add('ok');$('db-pill').textContent='DB: '+h.database;$('db-pill').className='pill '+(ready?'ok':'');$('stat-db').textContent=ready?'Connected':h.database;$('setup-db').textContent=ready?'Ready':h.database;$('setup-auth').textContent=h.adminConfigured?'Configured':'Missing';}catch(e){$('systemstate').textContent='Check service';$('db-pill').textContent='Unavailable';}}
-window.addEventListener('load',()=>{initializeMap();health();buildCommand();document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('go-imagery').onclick=()=>tab('imagery');$('go-setup').onclick=()=>tab('setup');$('map-clear').onclick=clearMap;$('notice-close').onclick=()=>document.querySelector('.notice').remove();$('search-scenes').onclick=searchScenes;$('copy-command').onclick=()=>navigator.clipboard.writeText(buildCommand()).then(()=>toast('Analysis inputs copied for GitHub Actions'));$('save-key').onclick=()=>{state.key=$('admin-key').value;toast('Key used for requests in this browser tab; not persisted');getDetections();getJobs();};$('load-detections').onclick=getDetections;$('upload-geojson').onclick=uploadGeoJSON;$('use-job-key').onclick=useAnalysisKey;$('queue-analysis').onclick=queueAnalysis;$('refresh-jobs').onclick=getJobs;document.querySelectorAll('.copy-inline').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copy).then(()=>toast('Copied')));['bbox','before','after'].forEach(id=>$(id).addEventListener('input',buildCommand));});
+// Bind buttons before optional map initialization. Failed tiles must never disable controls.
+function initializeDashboard(){
+ const click=(id,handler)=>{const element=$(id);if(element)element.addEventListener('click',handler);};
+ click('go-imagery',()=>tab('imagery'));click('go-setup',()=>tab('setup'));
+ click('map-clear',clearMap);click('notice-close',()=>document.querySelector('.notice')?.remove());
+ click('search-scenes',searchScenes);
+ click('copy-command',()=>navigator.clipboard.writeText(buildCommand()).then(()=>toast('Analysis inputs copied for GitHub Actions')).catch(()=>toast('Clipboard unavailable. Copy the inputs shown on the page.')));
+ click('save-key',()=>{state.key=$('admin-key').value;toast('Key used for requests in this browser tab; not persisted');void getDetections();void getJobs();});
+ click('load-detections',getDetections);click('upload-geojson',uploadGeoJSON);
+ click('use-job-key',useAnalysisKey);click('queue-analysis',queueAnalysis);click('refresh-jobs',getJobs);
+ document.querySelectorAll('.copy-inline').forEach(button=>button.addEventListener('click',()=>navigator.clipboard.writeText(button.dataset.copy).then(()=>toast('Copied')).catch(()=>toast('Clipboard unavailable'))));
+ ['bbox','before','after'].forEach(id=>$(id)?.addEventListener('input',buildCommand));
+ try{buildCommand();}catch(error){console.warn('RSCDS inputs unavailable',error);}
+ try{initializeMap();}catch(error){
+  const map=$('map');if(map)map.textContent='Interactive map unavailable. Enter bounding-box coordinates in Satellite imagery.';
+  console.warn('Map initialization failed; navigation and controls remain available.',error);
+ }
+ void health();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initializeDashboard,{once:true});
+else initializeDashboard();
 
 // Poll only while the operator is looking at the authenticated analysis screen.
 // Never persist keys or coordinates in URLs, localStorage or GitHub workflow inputs.

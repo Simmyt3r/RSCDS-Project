@@ -78,3 +78,7 @@ The offline raster worker now matches the verified live catalogue lookup: it sea
 A successful worker workflow does not necessarily mean imagery was processed: if the queue is empty, the GitHub job ends successfully and skips raster dependencies. The Satellite imagery screen now shows authenticated queue totals (queued, running, completed and failed), a clear explanation for idle workers, and automatic 60-second polling while its tab is visible. Each completed analysis has **View run results**, which scopes authenticated GeoJSON retrieval to that job. An analysis with zero changed polygons is **not** proof that no settlement change occurred.
 
 The new Python worker STAC unit tests cover cloud filtering, missing bands and catalogue compatibility. GitHub CI executes all Python tests, including these offline test cases.
+
+## Navigation reliability (v0.3.5)
+
+RSCDS now loads independent navigation code before the map/dashboard script, so a Leaflet initialization error cannot disable the sidebar. Five sidebar destinations use real hash links that support reload, browser history, keyboard navigation and deep links. On narrow screens, use **Menu** to open a slide-in drawer; select a section, tap outside, tap the Close button, or press Escape to close it. The main JavaScript also binds critical controls before initializing the optional map and handles map failures gracefully. Credentials remain tab-local and never enter navigation URLs.

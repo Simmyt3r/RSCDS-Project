@@ -23,3 +23,27 @@
 .job-filter{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#eaf5f5;border:1px solid #c6e2e3;border-radius:9px;padding:10px 12px;margin-bottom:12px;color:#176169;font-size:12px;font-weight:700;}
 .job-filter button{white-space:normal;}
 @media(max-width:550px){.queue-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.job-filter{flex-direction:column;align-items:stretch;}}
+
+/* Reliable keyboard-accessible navigation and responsive slide-in sidebar. */
+.sidebar{z-index:10;}
+.sidebar .nav{text-decoration:none;width:100%;min-height:44px;box-sizing:border-box;cursor:pointer;}
+.sidebar .nav:focus-visible,.mobile-nav-toggle:focus-visible,.mobile-nav-close:focus-visible{outline:3px solid #44d9c0;outline-offset:2px;}
+.mobile-nav-toggle,.mobile-nav-close,.mobile-nav-backdrop{display:none;}
+@media(max-width:700px){
+  .app{display:block;}
+  .sidebar{display:flex;width:min(300px,85vw);height:100dvh;position:fixed;top:0;left:0;z-index:1201;transform:translateX(-105%);visibility:hidden;pointer-events:none;transition:transform .2s ease,visibility .2s ease;padding:25px 17px;overflow-y:auto;box-shadow:0 15px 40px rgba(0,0,0,.22);}
+  .sidebar.is-open{transform:translateX(0);visibility:visible;pointer-events:auto;}
+  .sidebar nav{display:grid;overflow:visible;gap:5px;}
+  .sidebar .nav{display:flex;flex:0 0 auto;font-size:13px;padding:12px 14px;white-space:normal;}
+  .sidebar .nav span{font-size:18px;width:22px;}
+  .sidebar-caption,.sidefoot{display:block;}
+  .brand{margin:0 38px 26px 0;}
+  .mobile-nav-toggle{display:inline-flex;align-items:center;gap:7px;background:#edf7f6;border:1px solid #c8e8e3;border-radius:9px;padding:10px 12px;color:#176866;font-size:12px;font-weight:750;cursor:pointer;flex-shrink:0;}
+  .mobile-nav-toggle span{font-size:17px;line-height:1;}
+  .mobile-nav-close{display:grid;place-items:center;position:absolute;top:18px;right:17px;width:36px;height:36px;background:#183b4d;border:1px solid #375269;border-radius:9px;color:#fff;font-size:24px;cursor:pointer;}
+  .mobile-nav-backdrop:not([hidden]){display:block;position:fixed;inset:0;z-index:1200;background:rgba(8,22,33,.58);}
+  body.nav-open{overflow:hidden;}
+  .topbar{gap:10px;}
+  .topbar .breadcrumbs{flex:1;min-width:0;}
+}
+@media(prefers-reduced-motion:reduce){.sidebar,.tabpane{transition:none;animation:none;}}

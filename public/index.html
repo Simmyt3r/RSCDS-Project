@@ -2,23 +2,25 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1725">
 <title>RSCDS | Remote Settlement Change Detection</title>
 <link rel="preconnect" href="https://unpkg.com"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
+<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="/navigation.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
 </head><body>
 <div class="app">
- <aside class="sidebar">
+ <aside class="sidebar" id="app-sidebar" aria-label="Application sidebar">
   <div class="brand"><div class="brandmark">◈</div><div><strong>RSCDS</strong><small>Remote Sensing Lab</small></div></div>
+  <button type="button" id="mobile-nav-close" class="mobile-nav-close" aria-label="Close navigation">×</button>
   <div class="sidebar-caption">WORKSPACE</div>
-  <nav aria-label="Main navigation">
-   <button class="nav active" data-tab="overview"><span>▦</span> Overview</button>
-   <button class="nav" data-tab="imagery"><span>◉</span> Satellite imagery</button>
-   <button class="nav" data-tab="detections"><span>◇</span> Candidate detections</button>
-   <button class="nav" data-tab="review"><span>✓</span> Review workspace</button>
-   <button class="nav" data-tab="setup"><span>⚙</span> Deploy & configure</button>
+  <nav id="primary-navigation" aria-label="Main navigation">
+   <a class="nav active" data-tab="overview" href="#overview" aria-current="page"><span aria-hidden="true">▦</span> Overview</a>
+   <a class="nav" data-tab="imagery" href="#imagery"><span aria-hidden="true">◉</span> Satellite imagery</a>
+   <a class="nav" data-tab="detections" href="#detections"><span aria-hidden="true">◇</span> Candidate detections</a>
+   <a class="nav" data-tab="review" href="#review"><span aria-hidden="true">✓</span> Review workspace</a>
+   <a class="nav" data-tab="setup" href="#setup"><span aria-hidden="true">⚙</span> Deploy & configure</a>
   </nav>
-  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3<br>Private by default • Human-reviewed</p></div>
+  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3.5<br>Private by default • Human-reviewed</p></div>
  </aside>
+ <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" hidden></div>
  <main class="main">
-  <header class="topbar"><div class="breadcrumbs">Workspace / <b id="crumb">Overview</b></div><div class="topactions"><span class="pill pale">Sentinel-2 L2A</span><span class="pill" id="db-pill">Checking database</span></div></header>
+  <header class="topbar"><button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="app-sidebar"><span aria-hidden="true">☰</span> Menu</button><div class="breadcrumbs" aria-live="polite">Workspace / <b id="crumb">Overview</b></div><div class="topactions"><span class="pill pale">Sentinel-2 L2A</span><span class="pill" id="db-pill">Checking database</span></div></header>
   <div class="inner">
   <div class="notice"><span>◈</span><div><strong>Evidence standard</strong><p>Automated change is not proof of a new settlement. All imported candidates start unverified. Use appropriate safeguards for sensitive locations.</p></div><button id="notice-close" aria-label="Dismiss notice">×</button></div>
   <section class="tabpane active" id="tab-overview">
