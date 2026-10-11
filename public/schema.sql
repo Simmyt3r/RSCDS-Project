@@ -38,11 +38,23 @@ CREATE TABLE IF NOT EXISTS rscds.analysis_jobs (
   lease_token UUID,
   lease_expires TIMESTAMPTZ,
   result_count INTEGER NOT NULL DEFAULT 0,
+  scene_before TEXT,
+  scene_after TEXT,
+  acquired_before TIMESTAMPTZ,
+  acquired_after TIMESTAMPTZ,
+  valid_fraction DOUBLE PRECISION CHECK(valid_fraction BETWEEN 0 AND 1),
+  processor_method TEXT,
   error_message TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   started_at TIMESTAMPTZ,
   finished_at TIMESTAMPTZ
 );
+ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS scene_before TEXT;
+ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS scene_after TEXT;
+ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS acquired_before TIMESTAMPTZ;
+ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS acquired_after TIMESTAMPTZ;
+ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS valid_fraction DOUBLE PRECISION;
+ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS processor_method TEXT;
 CREATE INDEX IF NOT EXISTS rscds_job_queue_idx ON rscds.analysis_jobs(status,created_at);
 ALTER TABLE rscds.detections ADD COLUMN IF NOT EXISTS job_id UUID REFERENCES rscds.analysis_jobs(id);
 CREATE INDEX IF NOT EXISTS rscds_detection_job_idx ON rscds.detections(job_id);

@@ -54,7 +54,10 @@ def run_job(api,token,job,analyzer):
             for offset in range(0,len(features),100):
                 post(api,token,{**claim,'action':'batch','features':{
                     'type':'FeatureCollection','features':features[offset:offset+100]}})
-            post(api,token,{**claim,'action':'complete'})
+            metadata=data.get('metadata')
+            if not isinstance(metadata,dict) or metadata.get('status')!='candidate_only':
+                raise RuntimeError('Analyzer did not return required candidate-only provenance')
+            post(api,token,{**claim,'action':'complete','provenance':metadata})
         print('Analysis completed. Candidate locations are available only to authenticated RSCDS reviewers.')
         return 0
     except Exception as exc:

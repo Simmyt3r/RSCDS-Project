@@ -8,7 +8,7 @@ export default async function handler(req,res){
   try {
     sql=getDB();
     if(req.method==='GET'){
-      const rows=await sql`SELECT id,bbox,before_window,after_window,cloud_max,min_pixels,status,attempts,result_count,error_message,created_at,started_at,finished_at FROM rscds.analysis_jobs ORDER BY created_at DESC LIMIT 50`;
+      const rows=await sql`SELECT id,bbox,before_window,after_window,cloud_max,min_pixels,status,attempts,result_count,error_message,scene_before,scene_after,acquired_before,acquired_after,valid_fraction,processor_method,created_at,started_at,finished_at FROM rscds.analysis_jobs ORDER BY created_at DESC LIMIT 50`;
       const counts=await sql`SELECT status,COUNT(*)::int AS count FROM rscds.analysis_jobs GROUP BY status`;
       const summary={queued:0,running:0,completed:0,failed:0};
       for(const row of counts)if(Object.prototype.hasOwnProperty.call(summary,row.status))summary[row.status]=row.count;
@@ -22,7 +22,7 @@ export default async function handler(req,res){
         if(!failed.length)return [];
         // Abandoned batches from prior attempts must never leak into a fresh result.
         await tx`DELETE FROM rscds.detections WHERE job_id=${body.id}`;
-        return tx`UPDATE rscds.analysis_jobs SET status='queued',attempts=0,lease_token=NULL,lease_expires=NULL,error_message=NULL,started_at=NULL,finished_at=NULL,result_count=0 WHERE id=${body.id} AND status='failed' RETURNING id,status`;
+        return tx`UPDATE rscds.analysis_jobs SET status='queued',attempts=0,lease_token=NULL,lease_expires=NULL,error_message=NULL,started_at=NULL,finished_at=NULL,result_count=0,scene_before=NULL,scene_after=NULL,acquired_before=NULL,acquired_after=NULL,valid_fraction=NULL,processor_method=NULL WHERE id=${body.id} AND status='failed' RETURNING id,status`;
       });
       return send(res,rows.length?200:409,rows[0]||{error:'Only failed jobs can be retried'});
     }

@@ -11,13 +11,14 @@ export default async function handler(req,res){
      to_regclass('rscds.detections') IS NOT NULL AS has_detections,
      to_regclass('rscds.analysis_jobs') IS NOT NULL AS has_jobs,
      EXISTS(SELECT 1 FROM information_schema.columns
-       WHERE table_schema='rscds' AND table_name='detections' AND column_name='job_id') AS has_job_link`;
-   db=row?.has_detections && row?.has_jobs && row?.has_job_link?'ready':'migration required';
+       WHERE table_schema='rscds' AND table_name='detections' AND column_name='job_id') AS has_job_link,
+     EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='rscds' AND table_name='analysis_jobs' AND column_name='scene_before') AS has_evidence_link`;
+   db=row?.has_detections && row?.has_jobs && row?.has_job_link && row?.has_evidence_link?'ready':'migration required';
   }catch{db='connection error';}
   finally{if(sql)await sql.end();}
  }
  return send(res,200,{
-  app:'RSCDS',version:'0.4.0',catalog:'Earth Search STAC',database:db,
+  app:'RSCDS',version:'0.5.0',catalog:'Earth Search STAC',database:db,
   adminConfigured:Boolean(process.env.ADMIN_API_KEY&&process.env.ADMIN_API_KEY.length>=24),
   workerConfigured:Boolean(process.env.WORKER_API_KEY&&process.env.WORKER_API_KEY.length>=24),
   keysIndependent:Boolean(process.env.ADMIN_API_KEY&&process.env.WORKER_API_KEY&&process.env.ADMIN_API_KEY!==process.env.WORKER_API_KEY),

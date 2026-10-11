@@ -1,6 +1,7 @@
 import {send,getDB} from './_helpers.js';
 import {validUUID,safeFailureMessage,safeTokenMatch} from './_jobs.js';
 import {insertFeatures} from './_ingest.js';
+import {validatedProvenance} from './_evidence.js';
 
 export default async function handler(req,res){
   if(req.method!=='POST')return send(res,405,{error:'POST only'});
@@ -36,7 +37,13 @@ export default async function handler(req,res){
       const rows=await sql`UPDATE rscds.analysis_jobs SET status='failed',error_message=${msg},lease_token=NULL,lease_expires=NULL,finished_at=NOW() WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' RETURNING id,status`;
       return send(res,rows.length?200:409,rows[0]||{error:'Lease expired'});
     }
-    const rows=await sql`UPDATE rscds.analysis_jobs SET status='completed',result_count=(SELECT COUNT(*)::INT FROM rscds.detections WHERE job_id=${body.id}),lease_token=NULL,lease_expires=NULL,finished_at=NOW() WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' RETURNING id,status,result_count`;
+    const p=validatedProvenance(body.provenance);
+    const rows=await sql`UPDATE rscds.analysis_jobs SET status='completed',
+      result_count=(SELECT COUNT(*)::INT FROM rscds.detections WHERE job_id=${body.id}),
+      scene_before=${p.before},scene_after=${p.after},acquired_before=${p.early},acquired_after=${p.late},
+      valid_fraction=${p.fraction},processor_method=${p.method},
+      lease_token=NULL,lease_expires=NULL,finished_at=NOW()
+      WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' RETURNING id,status,result_count`;
     return send(res,rows.length?200:409,rows[0]||{error:'Lease expired'});
   }catch(e){return send(res,400,{error:String(e.message||e)});}finally{if(sql)await sql.end();}
 }

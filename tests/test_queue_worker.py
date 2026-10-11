@@ -37,7 +37,10 @@ def test_worker_batches_and_suppresses_scene_logging(capsys):
     def analyzer(bbox,before,after,out,cloud,pixels):
         print('CONFIDENTIAL: satellite scene coordinates '+str(bbox))
         Path(out).write_text(json.dumps({'features':features}))
-        return {'features':features}
+        return {'features':features,'metadata':{'status':'candidate_only',
+            'before':'S2B_T32NMP_20250128T094646_L2A','after':'S2A_T32NMP_20260321T095738_L2A',
+            'before_date':'2025-01-28T09:58:45+00:00','after_date':'2026-03-21T09:59:04+00:00',
+            'valid_fraction':0.82,'model':'explainable unvalidated change heuristic v0.1'}}
     with patch.object(module,'post',side_effect=sender):
         assert module.run_job('https://example.com/api/worker','a'*30,sample_job(),analyzer)==0
     captured=capsys.readouterr()
@@ -45,6 +48,7 @@ def test_worker_batches_and_suppresses_scene_logging(capsys):
     assert '8.2' not in captured.out
     assert [x['action'] for x in calls]==['batch','batch','batch','complete']
     assert [len(x['features']['features']) for x in calls[:-1]]==[100,100,25]
+    assert calls[-1]['provenance']['valid_fraction']==0.82
 
 
 def test_worker_failure_reports_only_generic_message(capsys):
