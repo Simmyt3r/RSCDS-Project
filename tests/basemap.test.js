@@ -25,11 +25,11 @@ function fake(){
  return {L,map,controls,window,timers,events};
 }
 test('no requests go to blocked standard OSM tile host',()=>{
- assert.doesNotMatch(source,/tile\\.openstreetmap\\.org/);
- assert.doesNotMatch(js,/tile\\.openstreetmap\\.org/);
- assert.match(source,/tiles\\.openfreemap\\.org\\/styles\\/liberty/);
+ assert.ok(!source.includes('tile.openstreetmap.org'));
+ assert.ok(!js.includes('tile.openstreetmap.org'));
+ assert.ok(source.includes('tiles.openfreemap.org/styles/liberty'));
  assert.match(html,/maplibre-gl/);
- assert.match(html,/map-basemap\\.js/);
+ assert.ok(html.includes('map-basemap.js'));
 });
 test('missing vector renderer falls back to local grid and preserves AOI surface',()=>{
  const e=fake();e.window.RSCDSBaseMap.attach(e.map);
@@ -65,7 +65,7 @@ test('repeated vector-map errors switch safely to a grid',()=>{
  assert.match(e.controls['map-status'].textContent,/tiles failed/);
 });
 test('app preserves two-click area selection with new basemap controller',()=>{
- assert.match(js,/state\\.map\\.on\\('click'/);
- assert.match(js,/RSCDSBaseMap\\?\\.attach\\(state\\.map\\)/);
- assert.match(js,/L\\.rectangle\\(bounds/);
+ assert.ok(js.includes("state.map.on('click'"));
+ assert.ok(js.includes('RSCDSBaseMap?.attach(state.map)'));
+ assert.ok(js.includes('L.rectangle(bounds'));
 });
