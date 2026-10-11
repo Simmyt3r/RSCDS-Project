@@ -25,12 +25,31 @@ def bbox_value(raw):
     return v
 
 def choose_scene(client,bbox,period,cloud_max):
-    item_list=list(client.search(collections=[COLLECTION],bbox=bbox,datetime=period,query={'eo:cloud_cover':{'lte':cloud_max}},max_items=30).items())
-    item_list=[i for i in item_list if all(k in i.assets for k in BANDS)]
-    if not item_list:raise RuntimeError(f'No usable scene in {period}; change dates or cloud threshold')
-    # Scene-wide cloud cover is only an initial filter. Pixelwise SCL mask is applied later.
-    item_list.sort(key=lambda x:(float(x.properties.get('eo:cloud_cover',100)),x.datetime.isoformat() if x.datetime else ''))
-    return item_list[0]
+    """Discover using core STAC fields and filter locally.
+
+    Some Earth Search deployments reject STAC Query extension fields. The API
+    endpoint previously suffered from this, so the worker uses the same robust
+    core-only approach: search by bbox and dates, then screen scene metadata.
+    The cloud percentage is not a pixel-level mask.
+    """
+    items=list(client.search(collections=[COLLECTION],bbox=bbox,datetime=period,max_items=80).items())
+    candidates=[]
+    for item in items:
+        if not all(k in item.assets for k in BANDS):
+            continue
+        try:
+            cloud=float(item.properties.get('eo:cloud_cover'))
+        except (TypeError,ValueError,AttributeError):
+            continue
+        if not math.isfinite(cloud) or not 0 <= cloud <= cloud_max:
+            continue
+        candidates.append((cloud,item))
+    if not candidates:
+        raise RuntimeError(f'No usable scene in {period}; change dates or cloud threshold')
+    # Scene-wide cloud percentage is only an initial screen; SCL masking
+    # subsequently checks the actual pixels inside the study area.
+    candidates.sort(key=lambda row:(row[0],row[1].datetime.isoformat() if row[1].datetime else '',row[1].id))
+    return candidates[0][1]
 
 def target_grid(bbox):
     # EPSG:3857 area is an approximation, reasonably close for equatorial test AOIs.

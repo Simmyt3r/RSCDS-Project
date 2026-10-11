@@ -19,4 +19,4 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements-worker.txt
-      - run: pytest tests/test_detector.py tests/test_import.py tests/test_queue_worker.py -q
+      - run: pytest tests/ -q

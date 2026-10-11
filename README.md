@@ -68,3 +68,7 @@ Set `DATABASE_URL`, `ADMIN_API_KEY` and `WORKER_API_KEY` as server-only Producti
 The Vercel `/api/scenes` endpoint now sends a basic, STAC-compliant Sentinel-2 search with date-only windows expanded to complete UTC days. It filters scene-wide cloud metadata and orders scenes locally. If Element84 rejects a POST request with a client/protocol error, a read-only GET fallback is attempted. Provider errors return HTTP 502 (504 for timeouts), while invalid user-supplied dates/bounds return HTTP 400. No sample or synthetic scenes are shown as real results.
 
 The GitHub worker remains separate and requires the **Actions variable** `RSCDS_DEPLOY_URL=https://rscds.vercel.app` and the **Actions secret** `RSCDS_WORKER_API_KEY`. Set both in GitHub Settings → Secrets and variables → Actions; do not expose credentials in workflow inputs. Scheduled jobs may show as skipped until the variable is set. See `SETUP.md` for guided configuration.
+
+## Satellite worker compatibility (v0.3.4)
+
+The offline raster worker now matches the verified live catalogue lookup: it searches with portable core STAC fields and applies cloud-cover and band-availability screening locally. GitHub CI executes every Python test in `tests/`, including worker scene-selection checks. A green scheduled workflow with **no queued job** means the worker polled successfully but did not process imagery. Queue a non-sensitive test area from the RSCDS dashboard to start an actual analysis.
