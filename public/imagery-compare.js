@@ -64,7 +64,15 @@ function mapReady(bbox){
  if(!S.map){
   S.map=L.map('compare-map',{scrollWheelZoom:false,zoomControl:true,maxZoom:18});
   for(const [name,index] of [['before-photo',200],['after-photo',201],['change-polygons',460]]){
-   S.map.createPane(name);S.map.getPane(name).style.zIndex=String(index);
+   S.map.createPane(name);
+   const pane=S.map.getPane(name);
+   pane.style.zIndex=String(index);
+   if(name==='after-photo'){
+    // Leaflet panes are absolutely positioned with no intrinsic dimensions.
+    // Give the clipping plane viewport dimensions so swipe percentages work.
+    pane.style.width='100%';
+    pane.style.height='100%';
+   }
   }
  }
  clearLayer('beforeLayer');clearLayer('afterLayer');clearLayer('polygons');
@@ -74,7 +82,7 @@ function mapReady(bbox){
 }
 function tileError(){
  S.failures++;
- if(S.failures>=3&&S.loads===0)feedback('The external tile demonstration service did not render the aligned photos. Actual source image quicklooks are below. A privately hosted TiTiler is required for reliable production viewing.','error');
+ if(S.failures>=4)feedback('Some aligned raster tiles failed to render. The external demo may be rate limited or images may not cover the entire view. Actual source quicklooks remain below.','error');
 }
 async function render(){
  if(!S.before||!S.after){feedback('Select a before and after acquisition first.','error');return;}
