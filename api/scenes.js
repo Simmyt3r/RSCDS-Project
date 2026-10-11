@@ -1,15 +1,22 @@
 import {send,parseBBox,validPeriod} from './_helpers.js';
+import {searchCatalog,STAC_COLLECTION,STACProviderError} from './_stac.js';
 export default async function handler(req,res){
  if(req.method!=='GET')return send(res,405,{error:'GET only'});
+ let bbox,datetime;
+ try {bbox=parseBBox(req.query.bbox);datetime=validPeriod(req.query.dates);}
+ catch(error){return send(res,400,{error:error.message||'Invalid search parameters'});}
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),22000);
  try{
-  const bbox=parseBBox(req.query.bbox),datetime=validPeriod(req.query.dates);
-  const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),18000);
-  let r;
-  try {r=await fetch('https://earth-search.aws.element84.com/v1/search',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({collections:['sentinel-2-c1-l2a'],bbox,datetime,limit:12,query:{'eo:cloud_cover':{lte:60}},sortby:[{field:'properties.datetime',direction:'desc'}]})});}
-  finally {clearTimeout(timer)}
-  if(!r.ok)throw Error('Imagery catalog returned '+r.status);
-  const data=await r.json();
-  const features=(data.features||[]).map(x=>({id:x.id,date:x.properties?.datetime,cloudCover:x.properties?.['eo:cloud_cover'],platform:x.properties?.platform,assets:Object.keys(x.assets||{}).filter(k=>['red','green','blue','nir','swir16','scl','visual'].includes(k)),provenance:x.collection}));
-  send(res,200,{source:'Element84 Earth Search',collection:'sentinel-2-c1-l2a',bbox,datetime,features,warning:'Scene availability is not a settlement detection. Cloud cover is scene-wide metadata.'});
- }catch(err){send(res,400,{error:String(err.message||err)});}
+  const result=await searchCatalog(bbox,datetime,{signal:controller.signal});
+  return send(res,200,{source:'Element84 Earth Search',collection:STAC_COLLECTION,bbox,
+    datetime:result.datetime,features:result.features,
+    warning:'Imagery metadata only. Cloud coverage is scene-wide; no detection is implied.'});
+ }catch(error){
+  const timedOut=error?.name==='AbortError';
+  const status=timedOut?504:(error instanceof STACProviderError?502:502);
+  return send(res,status,{error:timedOut?'Satellite catalogue timed out; retry or choose a shorter time window.':
+   'Satellite imagery catalogue unavailable; retry later or inspect the provider status.',
+   provider:'Element84 Earth Search',upstreamStatus:error instanceof STACProviderError?error.status:undefined});
+ }finally{clearTimeout(timer);}
 }
