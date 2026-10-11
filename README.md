@@ -102,3 +102,11 @@ After **Search imagery**, the system proposes the least-cloudy available Sentine
 This prototype uses the TiTiler **public demonstration endpoint** after an explicit user action. It shares requested map tile coordinates and public COG URLs with a third party, and may rate-limit or fail. **Never use it for sensitive humanitarian locations.** A privately hosted render service is required before operational use. External service failures leave the authentic source JPEG quicklooks visible.
 
 **Overlay change polygons** uses only the administrator-authenticated protected `/api/detections` service and matches polygons against the exact selected `scene_before` and `scene_after` IDs. It doesn't invent polygons or show unrelated analysis results as if they belonged to the selected images. Polygons remain unverified unless independently reviewed. The administrator key is not sent to imagery providers or saved in browser storage.
+
+## v0.5.0: Reproducible, private research evidence
+
+For the first time, **completed** satellite jobs persist the actual before/after scene IDs, UTC acquisition timestamps, shared cloud-free pixel fraction, and the exact unvalidated processing method. The worker refuses completion if its own evidence metadata is missing, which avoids showing arbitrary scenes as evidence. An idle green GitHub workflow is still only a successful queue poll, not a completed satellite analysis.
+
+The administrator-only API `/api/evidence?job_id=UUID&offset=0` returns one completed job's processing provenance, status counts, and paginated 100-feature GeoJSON records, including source scene pairs, review state and independent reviewer notes. Incomplete or failed jobs cannot appear as completed evidence. Exports must remain private. Fields are added through six additive, idempotent `ALTER TABLE` statements in `scripts/schema.sql`.
+
+**Caution:** Provenance metadata and a human review trail improve reproducibility; they are not a scientifically validated settlement classification model.
