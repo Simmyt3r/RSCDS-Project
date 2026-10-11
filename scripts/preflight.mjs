@@ -18,7 +18,7 @@ if(cfg){
 for(const name of ['index.html','setup.html','app.js','map-basemap.js','navigation.js','imagery-search.js','setup-wizard.js','styles.css','schema.sql']){
  check(fs.existsSync(file('public/'+name)),'Missing public asset: '+name);
 }
-const endpoints=['health','scenes','detections','review','jobs','worker'];
+const endpoints=['health','scenes','imagery','detections','review','jobs','worker'];
 for(const name of endpoints){
  const f='api/'+name+'.js';
  check(fs.existsSync(file(f)),'Missing API endpoint: '+f);
