@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-const S={before:null,after:null,metaBefore:null,metaAfter:null,map:null,beforeLayer:null,afterLayer:null,polygons:null,bounds:null,request:0,failures:0,loads:0};
+const S={before:null,after:null,metaBefore:null,metaAfter:null,map:null,beforeLayer:null,afterLayer:null,polygons:null,bounds:null,request:0,failures:0,loads:0,linkedEvidence:null};
 function feedback(message,level='info'){const el=$('compare-feedback');if(el){el.textContent=message;el.dataset.status=level;}}
 function date(scene){return String(scene?.date||'Unknown acquisition').slice(0,10);}
 function select(kind,scene){
@@ -10,7 +10,7 @@ function select(kind,scene){
  S[kind]=scene;
  const title=$('compare-'+kind+'-label'),sub=$('compare-'+kind+'-detail');
  if(title)title.textContent=date(scene);
- if(sub)sub.textContent=scene.id+' · '+(Number(scene.cloudCover)||0).toFixed(1)+'% scene-wide clouds';
+ if(sub)sub.textContent=scene.id+(scene.cloudCover==null?' · acquisition-specific cloud fraction unrecorded':' · '+Number(scene.cloudCover).toFixed(1)+'% scene-wide clouds');
  if(kind==='before')S.metaBefore=null;else S.metaAfter=null;
  feedback('Image selected. Render the pair to update the comparison map.');
 }
@@ -114,17 +114,30 @@ async function render(){
  }catch(error){feedback(String(error?.message||error),'error');}
  finally{if(button)button.disabled=false;}
 }
+function setLinkedEvidence(jobId,features,partial=false){
+ // Supplied solely by authenticated /api/evidence response in this browser tab.
+ S.linkedEvidence={jobId,features:Array.isArray(features)?features:[],partial:Boolean(partial)};
+ const label=$('compare-polygon-status');
+ if(label)label.textContent='Linked evidence job '+String(jobId).slice(0,8)+
+  (partial?' (not all feature pages loaded)':' (complete available candidate set)')+
+  '. Render selected source photos, then click Overlay change polygons.';
+}
 async function overlay(){
  const secret=$('compare-admin-key')?.value.trim();
  const label=$('compare-polygon-status');
- if(!secret){if(label)label.textContent='Enter the administrator key to load protected polygons.';return;}
  if(!S.map||!S.metaBefore||!S.metaAfter){if(label)label.textContent='Render dated images before overlaying polygons.';return;}
+ if(!S.linkedEvidence&&!secret){if(label)label.textContent='Enter administrator key, or open an authenticated analysis from Visual evidence.';return;}
  const button=$('compare-polygons');if(button)button.disabled=true;
  try{
-  const response=await fetch('/api/detections',{headers:{Authorization:'Bearer '+secret},cache:'no-store'});
-  const data=await response.json();
-  if(!response.ok)throw Error(data.error||'Administrator access denied');
-  const matched=(data.features||[]).filter(f=>f.properties?.scene_before===S.metaBefore.id&&f.properties?.scene_after===S.metaAfter.id);
+  let features;
+  if(S.linkedEvidence)features=S.linkedEvidence.features;
+  else{
+   const response=await fetch('/api/detections',{headers:{Authorization:'Bearer '+secret},cache:'no-store'});
+   const data=await response.json();
+   if(!response.ok)throw Error(data.error||'Administrator access denied');
+   features=data.features||[];
+  }
+  const matched=features.filter(f=>f.properties?.scene_before===S.metaBefore.id&&f.properties?.scene_after===S.metaAfter.id);
   clearLayer('polygons');
   if(matched.length){
    S.polygons=L.geoJSON({type:'FeatureCollection',features:matched},{
@@ -156,7 +169,7 @@ function bind(){
   clearLayer('polygons');const el=$('compare-polygon-status');if(el)el.textContent='Polygon overlay hidden.';
  });
 }
-window.RSCDSImageryCompare={select,setSearchResults,render,overlay,setSwipe};
+window.RSCDSImageryCompare={select,setSearchResults,render,overlay,setSwipe,setLinkedEvidence};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});
 else bind();
 })();
