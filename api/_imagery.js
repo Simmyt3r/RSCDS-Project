@@ -70,5 +70,5 @@ export function tileTemplate(scene,base=TILE_RENDERER) {
  url.searchParams.set('bidx','1');
  url.searchParams.append('bidx','2');
  url.searchParams.append('bidx','3');
- return url.toString();
+ return url.toString().replaceAll('%7Bz%7D','{z}').replaceAll('%7Bx%7D','{x}').replaceAll('%7By%7D','{y}');
 }

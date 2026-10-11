@@ -50,6 +50,11 @@
    const coverage=document.createElement('span');coverage.className='percent '+(clouds>30?'cloudy':'');
    coverage.textContent=Number.isFinite(clouds)?clouds.toFixed(1)+'% scene clouds':'Cloud unknown';
    actions.append(coverage);
+   const kind=id==='before-results'?'before':'after';
+   const choose=document.createElement('button');choose.type='button';choose.className='scene-select';
+   choose.textContent='Use as '+kind+' image';
+   choose.addEventListener('click',()=>window.RSCDSImageryCompare?.select(kind,scene));
+   actions.append(choose);
    if(typeof scene.id==='string'&&/^[A-Za-z0-9_-]{1,180}$/.test(scene.id)){
     const link=document.createElement('a');
     link.href='https://earth-search.aws.element84.com/v1/collections/sentinel-2-c1-l2a/items/'+encodeURIComponent(scene.id);
@@ -107,6 +112,9 @@
      failures.push(name+': '+message);
     }
    }
+   if(success)window.RSCDSImageryCompare?.setSearchResults(
+    responses[0].status==='fulfilled'?responses[0].value:[],
+    responses[1].status==='fulfilled'?responses[1].value:[]);
    if(failures.length)setStatus((success?'Partial results loaded. ':'')+failures.join(' '),'error');
    else setStatus('Found '+responses[0].value.length+' baseline and '+responses[1].value.length+' comparison Sentinel-2 scenes. Results are source metadata, not rendered images.','success');
   }finally{

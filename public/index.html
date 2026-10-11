@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1725">
 <title>RSCDS | Remote Settlement Change Detection</title>
 <link rel="preconnect" href="https://unpkg.com"><link rel="preconnect" href="https://tiles.openfreemap.org"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/imagery-search.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
+<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/imagery-search.js"></script><script defer src="/imagery-compare.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
 </head><body>
 <div class="app">
  <aside class="sidebar" id="app-sidebar" aria-label="Application sidebar">
@@ -16,7 +16,7 @@
    <a class="nav" data-tab="review" href="#review"><span aria-hidden="true">✓</span> Review workspace</a>
    <a class="nav" data-tab="setup" href="#setup"><span aria-hidden="true">⚙</span> Deploy & configure</a>
   </nav>
-  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3.7<br>Private by default • Human-reviewed</p></div>
+  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.4.0<br>Private by default • Human-reviewed</p></div>
  </aside>
  <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" hidden></div>
  <main class="main">
@@ -33,6 +33,36 @@
    <div class="pagehead"><div><div class="eyebrow">SOURCE DISCOVERY</div><h1>Satellite scene search</h1><p>Query real Sentinel-2 Collection 1 Level-2A acquisition metadata. Select comparable dry/wet seasons and inspect clouds.</p></div></div>
    <div class="panel padded"><div class="formgrid"><label>Area bounding box, lon/lat<input id="bbox" value="8.20,7.60,8.25,7.65" placeholder="minLon,minLat,maxLon,maxLat"></label><label>Before window<input id="before" value="2025-01-01/2025-03-31" placeholder="YYYY-MM-DD/YYYY-MM-DD"></label><label>After window<input id="after" value="2026-01-01/2026-03-31"></label><div class="formbutton"><button type="button" class="primary" id="search-scenes">Search imagery</button></div></div><div class="helper">Maximum search AOI: 0.5° longitude × 0.5° latitude. Search returns actual Sentinel-2 scene metadata, not rendered imagery or classifications.</div><div class="imagery-search-tools"><button type="button" class="secondary" id="imagery-sample">Use working example</button><span id="scene-search-feedback" role="status" aria-live="polite" class="scene-search-feedback" data-status="info">Ready to search two satellite observation periods.</span></div></div>
    <div class="twocol"><div class="panel padded"><div class="panelhead"><div><h2>Before scenes</h2><p>Baseline observation window</p></div></div><div id="before-results" class="result-list"><div class="empty">Search to view matching scenes.</div></div></div><div class="panel padded"><div class="panelhead"><div><h2>After scenes</h2><p>Comparison observation window</p></div></div><div id="after-results" class="result-list"><div class="empty">Search to view matching scenes.</div></div></div></div>
+
+   <div class="panel padded" id="imagery-compare-panel">
+    <div class="panelhead flush-head"><div><h2>True-colour satellite photograph comparison</h2>
+    <p>Select real Sentinel-2 acquisitions and inspect aligned before/after imagery, with private change polygons if available.</p></div><span class="pill pale">Image comparison</span></div>
+    <div class="comparison-selected-grid">
+      <div class="selection-summary"><span class="eyebrow">BEFORE</span><strong id="compare-before-label">Search baseline scenes</strong><small id="compare-before-detail">Select a before image above</small></div>
+      <div class="selection-summary"><span class="eyebrow">AFTER</span><strong id="compare-after-label">Search comparison scenes</strong><small id="compare-after-detail">Select an after image above</small></div>
+    </div>
+    <div class="compare-toolbar">
+      <button type="button" class="primary" id="compare-load">Render satellite photographs</button>
+      <label for="compare-swipe">After image reveal: <strong id="compare-swipe-value">50%</strong></label>
+      <input type="range" min="0" max="100" value="50" id="compare-swipe" disabled>
+      <button type="button" class="secondary" id="compare-reset">Reset map extent</button>
+    </div>
+    <p class="helper warning-note">When you click Render, the TiTiler public demonstration service receives public satellite asset URLs and map tile coordinates. Use only nonsensitive test areas. This demo service is not suitable for sustained production use.</p>
+    <p id="compare-feedback" class="scene-search-feedback" role="status" aria-live="polite" data-status="info">Search imagery and select one scene per observation period.</p>
+    <div class="compare-map-wrapper"><div id="compare-map" class="compare-map" role="application" aria-label="Aligned before and after satellite photograph comparison"></div><span class="compare-side-label compare-left">AFTER</span><span class="compare-side-label compare-right">BEFORE</span></div>
+    <p class="compare-credit">Copernicus Sentinel-2 via Element84 Earth Search, rendered with TiTiler. Natural seasonal or cloud differences are not confirmed settlements.</p>
+    <div id="compare-quicklooks" class="twocol compare-quicklook">
+      <div><strong>Before image preview</strong><div id="before-quicklook" class="quicklook-slot">Quicklook available after rendering.</div></div>
+      <div><strong>After image preview</strong><div id="after-quicklook" class="quicklook-slot">Quicklook available after rendering.</div></div>
+    </div>
+    <p class="helper">These full-scene photographic previews are for context. The comparison map above is aligned to your chosen coordinates.</p>
+    <div class="compare-overlay-controls">
+      <label>Administrator key (private overlay only)<input type="password" id="compare-admin-key" autocomplete="off" placeholder="Administrator key never sent to imagery providers"></label>
+      <button type="button" class="secondary" id="compare-polygons">Overlay change polygons</button>
+      <button type="button" class="secondary" id="compare-clear-polygons">Hide polygons</button>
+      <p id="compare-polygon-status" class="helper" role="status" aria-live="polite">No change polygons loaded.</p>
+    </div>
+   </div>
    <div class="panel padded" id="analysis-queue-panel">
     <div class="panelhead flush-head"><div><h2>Private satellite analysis queue</h2><p>Submit the study area and date windows above through your protected RSCDS API. The GitHub worker retrieves queued jobs without public coordinate inputs.</p></div><span class="pill pale">Admin only</span></div>
     <div class="rowform" style="margin-top:14px"><label>Administrator key for this browser tab<input id="job-admin-key" type="password" autocomplete="off" placeholder="Enter your admin key"></label><button class="secondary" id="use-job-key">Unlock analysis</button></div>
