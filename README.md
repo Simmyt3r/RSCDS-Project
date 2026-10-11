@@ -110,3 +110,7 @@ For the first time, **completed** satellite jobs persist the actual before/after
 The administrator-only API `/api/evidence?job_id=UUID&offset=0` returns one completed job's processing provenance, status counts, and paginated 100-feature GeoJSON records, including source scene pairs, review state and independent reviewer notes. Incomplete or failed jobs cannot appear as completed evidence. Exports must remain private. Fields are added through six additive, idempotent `ALTER TABLE` statements in `scripts/schema.sql`.
 
 **Caution:** Provenance metadata and a human review trail improve reproducibility; they are not a scientifically validated settlement classification model.
+
+## Linked visual evidence workspace (v0.5.0)
+
+Open any completed run from the private analysis queue via **Open visual evidence**. The dedicated workspace uses administrator-only paginated evidence records, shows exact worker-selected source scenes, review counts and valid-pixel overlap, maps candidate polygons on a **local coordinate grid** (no public basemap requests), provides independent reviewer notes and status controls, and supports private export of provenance manifests and GeoJSON. A completed job without provenance is explicitly marked incomplete. Images are only sent to an external tile renderer after an explicit user action in the separate photo viewer. The application does not claim that an unvalidated spectral heuristic proves settlements.

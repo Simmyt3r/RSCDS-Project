@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1725">
 <title>RSCDS | Remote Settlement Change Detection</title>
 <link rel="preconnect" href="https://unpkg.com"><link rel="preconnect" href="https://tiles.openfreemap.org"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/imagery-search.js"></script><script defer src="/imagery-compare.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
+<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/imagery-search.js"></script><script defer src="/imagery-compare.js"></script><script defer src="/evidence-workspace.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
 </head><body>
 <div class="app">
  <aside class="sidebar" id="app-sidebar" aria-label="Application sidebar">
@@ -12,11 +12,12 @@
   <nav id="primary-navigation" aria-label="Main navigation">
    <a class="nav active" data-tab="overview" href="#overview" aria-current="page"><span aria-hidden="true">▦</span> Overview</a>
    <a class="nav" data-tab="imagery" href="#imagery"><span aria-hidden="true">◉</span> Satellite imagery</a>
+   <a class="nav" data-tab="evidence" href="#evidence"><span aria-hidden="true">▤</span> Visual evidence</a>
    <a class="nav" data-tab="detections" href="#detections"><span aria-hidden="true">◇</span> Candidate detections</a>
    <a class="nav" data-tab="review" href="#review"><span aria-hidden="true">✓</span> Review workspace</a>
    <a class="nav" data-tab="setup" href="#setup"><span aria-hidden="true">⚙</span> Deploy & configure</a>
   </nav>
-  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.4.0<br>Private by default • Human-reviewed</p></div>
+  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.5.0<br>Private by default • Human-reviewed</p></div>
  </aside>
  <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" hidden></div>
  <main class="main">
@@ -75,6 +76,60 @@
     </div>
     <div id="job-notice" class="helper" role="status" aria-live="polite">Authenticate to submit and view analysis jobs.</div>
     <div id="job-results" class="result-list"><div class="empty">No jobs loaded.</div></div>
+   </div>
+  </section>
+  
+  <section class="tabpane" id="tab-evidence">
+   <div class="pagehead"><div><div class="eyebrow">PRIVATE GEO-SPATIAL RESEARCH EVIDENCE</div><h1>Visual evidence workspace</h1>
+    <p>Trace a completed analysis back to its exact Sentinel-2 acquisitions, inspect each polygon and document independent review evidence.</p></div><span class="pill pale">Admin only</span></div>
+   <div class="panel padded">
+    <div class="rowform"><label>Administrator key<input id="evidence-key" type="password" autocomplete="off" placeholder="Used in this browser tab only"></label>
+      <button id="evidence-unlock" class="secondary" type="button">Load completed analyses</button></div>
+    <div class="rowform evidence-picker">
+      <label>Completed job<select id="evidence-job"><option value="">Authenticate to list jobs</option></select></label>
+      <button id="evidence-open" type="button" class="primary">Open evidence</button><button id="evidence-refresh" type="button" class="secondary">Refresh</button>
+    </div>
+    <p id="evidence-status" class="helper" role="status" aria-live="polite">Authenticate to inspect protected locations and results.</p>
+    <p class="helper warning-note">These are unvalidated change candidates, not confirmed settlements. Exported geometry and review notes may contain sensitive information. Keep reports private.</p>
+   </div>
+   <div class="panel padded">
+    <div class="panelhead flush-head"><div><h2>Scene provenance &amp; evidence counts</h2>
+      <p>Actual acquisitions selected by the analysis worker, never guessed from the search date windows.</p></div><span id="evidence-state" class="pill">No job</span></div>
+    <div class="evidence-metrics">
+      <div><small>Unverified</small><strong id="ev-unverified">—</strong></div><div><small>Human verified</small><strong id="ev-verified">—</strong></div>
+      <div><small>Rejected</small><strong id="ev-rejected">—</strong></div><div><small>Shared cloud-free pixels</small><strong id="ev-valid">—</strong></div>
+    </div>
+    <div class="evidence-scenes">
+      <div><span class="eyebrow">BEFORE: PROCESSED SCENE</span><strong id="ev-before">Unavailable</strong><small id="ev-before-date">—</small></div>
+      <div><span class="eyebrow">AFTER: PROCESSED SCENE</span><strong id="ev-after">Unavailable</strong><small id="ev-after-date">—</small></div>
+    </div>
+    <p class="helper" id="ev-method">Processing method: —</p>
+    <div class="actions-row">
+      <button id="evidence-photos" type="button" class="primary" disabled>Open actual before/after photos</button>
+      <button id="evidence-report" type="button" class="secondary" disabled>Download private evidence manifest</button>
+      <button id="evidence-geojson" type="button" class="secondary" disabled>Export GeoJSON</button>
+    </div>
+    <p class="helper">The photo viewer uses external raster tiles only after you explicitly click Render satellite photographs. Coordinates remain local in the grid below.</p>
+   </div>
+   <div class="twocol evidence-layout">
+    <div class="panel padded"><div class="panelhead flush-head"><div><h2>Local polygon map</h2><p>Coordinate grid only; no third-party basemap requests.</p></div></div>
+      <div id="evidence-map" class="evidence-map" role="application" aria-label="Private job-linked polygons"></div>
+      <p class="helper">Amber = unverified, green = human verified, red = rejected. Reviews do not establish settlement identity.</p>
+    </div>
+    <div class="panel padded"><h2>Candidate register</h2><div id="evidence-candidates" class="evidence-candidates"><div class="empty">Open a completed job to load polygons.</div></div>
+      <button id="evidence-next" class="secondary full" type="button" hidden>Load more features</button>
+      <p id="evidence-page-status" class="helper"></p>
+    </div>
+   </div>
+   <div class="panel padded"><h2>Independent evidence review</h2>
+     <p id="ev-selected" class="subtext">Select an unverified candidate on the map or in the list.</p>
+     <div class="formgrid evidence-review-form">
+      <label>Reviewer<input id="ev-reviewer" maxlength="120" placeholder="Name"></label>
+      <label>Decision<select id="ev-decision"><option value="verified">Verify with evidence</option><option value="rejected">Reject</option></select></label>
+      <label>Evidence and rationale<textarea id="ev-notes" rows="3" maxlength="3000" placeholder="Explain independent sources, observations and limitations"></textarea></label>
+      <div class="formbutton"><button id="ev-submit" class="primary" type="button">Save review</button></div>
+     </div>
+     <p class="helper">Reviews require a named reviewer and at least 10 characters of evidence notes. Decisions cannot be silently overwritten.</p>
    </div>
   </section>
   <section class="tabpane" id="tab-detections">

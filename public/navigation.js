@@ -1,8 +1,8 @@
 /* Independent accessible navigation: must work even if map or API initialization fails. */
 (function(){
   'use strict';
-  const pages=new Set(['overview','imagery','detections','review','setup']);
-  const names={overview:'Overview',imagery:'Satellite imagery',detections:'Candidate detections',review:'Review workspace',setup:'Deploy & configure'};
+  const pages=new Set(['overview','imagery','evidence','detections','review','setup']);
+  const names={overview:'Overview',imagery:'Satellite imagery',evidence:'Visual evidence',detections:'Candidate detections',review:'Review workspace',setup:'Deploy & configure'};
   function boot(){
     const sidebar=document.getElementById('app-sidebar');
     const nav=document.getElementById('primary-navigation');

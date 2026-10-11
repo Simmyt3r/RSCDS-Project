@@ -83,7 +83,8 @@ function renderQueueStatus(counts){
  else guide.textContent='No analysis has been submitted. The successful GitHub workflow only checked for work. Select an area and dates, then press Queue secure analysis.';
 }
 function viewJobResults(jobId){
- state.selectedJob=jobId;tab('detections');void getDetections();
+ if(window.RSCDSEvidence?.openJob)void window.RSCDSEvidence.openJob(jobId,state.key);
+ else{state.selectedJob=jobId;tab('detections');void getDetections();}
 }
 async function getJobs(){
  if(!state.key){$('job-results').textContent='Enter the administrator key and unlock analysis.';return;}
@@ -102,7 +103,7 @@ async function getJobs(){
    summary.append(title,dates,extent);row.append(summary,status);
    if(job.status==='completed'){
     const count=document.createElement('small');count.textContent=`${job.result_count} new candidate(s) stored. A result count of zero is not evidence that there was no settlement change.`;summary.append(count);
-    const inspect=document.createElement('button');inspect.className='secondary';inspect.textContent='View run results';
+    const inspect=document.createElement('button');inspect.className='secondary';inspect.textContent='Open visual evidence';
     inspect.onclick=()=>viewJobResults(job.id);row.append(inspect);
    }
    if(job.status==='failed'){
