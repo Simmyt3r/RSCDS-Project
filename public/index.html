@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1725">
 <title>RSCDS | Remote Settlement Change Detection</title>
 <link rel="preconnect" href="https://unpkg.com"><link rel="preconnect" href="https://tiles.openfreemap.org"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
+<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/imagery-search.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
 </head><body>
 <div class="app">
  <aside class="sidebar" id="app-sidebar" aria-label="Application sidebar">
@@ -16,7 +16,7 @@
    <a class="nav" data-tab="review" href="#review"><span aria-hidden="true">✓</span> Review workspace</a>
    <a class="nav" data-tab="setup" href="#setup"><span aria-hidden="true">⚙</span> Deploy & configure</a>
   </nav>
-  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3.6<br>Private by default • Human-reviewed</p></div>
+  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3.7<br>Private by default • Human-reviewed</p></div>
  </aside>
  <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" hidden></div>
  <main class="main">
@@ -31,7 +31,7 @@
   </section>
   <section class="tabpane" id="tab-imagery">
    <div class="pagehead"><div><div class="eyebrow">SOURCE DISCOVERY</div><h1>Satellite scene search</h1><p>Query real Sentinel-2 Collection 1 Level-2A acquisition metadata. Select comparable dry/wet seasons and inspect clouds.</p></div></div>
-   <div class="panel padded"><div class="formgrid"><label>Area bounding box, lon/lat<input id="bbox" value="8.20,7.60,8.25,7.65" placeholder="minLon,minLat,maxLon,maxLat"></label><label>Before window<input id="before" value="2025-01-01/2025-03-31" placeholder="YYYY-MM-DD/YYYY-MM-DD"></label><label>After window<input id="after" value="2026-01-01/2026-03-31"></label><div class="formbutton"><button class="primary" id="search-scenes">Search imagery</button></div></div><div class="helper">Maximum search AOI: 0.5° longitude × 0.5° latitude. Search is metadata discovery, not image classification.</div></div>
+   <div class="panel padded"><div class="formgrid"><label>Area bounding box, lon/lat<input id="bbox" value="8.20,7.60,8.25,7.65" placeholder="minLon,minLat,maxLon,maxLat"></label><label>Before window<input id="before" value="2025-01-01/2025-03-31" placeholder="YYYY-MM-DD/YYYY-MM-DD"></label><label>After window<input id="after" value="2026-01-01/2026-03-31"></label><div class="formbutton"><button type="button" class="primary" id="search-scenes">Search imagery</button></div></div><div class="helper">Maximum search AOI: 0.5° longitude × 0.5° latitude. Search returns actual Sentinel-2 scene metadata, not rendered imagery or classifications.</div><div class="imagery-search-tools"><button type="button" class="secondary" id="imagery-sample">Use working example</button><span id="scene-search-feedback" role="status" aria-live="polite" class="scene-search-feedback" data-status="info">Ready to search two satellite observation periods.</span></div></div>
    <div class="twocol"><div class="panel padded"><div class="panelhead"><div><h2>Before scenes</h2><p>Baseline observation window</p></div></div><div id="before-results" class="result-list"><div class="empty">Search to view matching scenes.</div></div></div><div class="panel padded"><div class="panelhead"><div><h2>After scenes</h2><p>Comparison observation window</p></div></div><div id="after-results" class="result-list"><div class="empty">Search to view matching scenes.</div></div></div></div>
    <div class="panel padded" id="analysis-queue-panel">
     <div class="panelhead flush-head"><div><h2>Private satellite analysis queue</h2><p>Submit the study area and date windows above through your protected RSCDS API. The GitHub worker retrieves queued jobs without public coordinate inputs.</p></div><span class="pill pale">Admin only</span></div>
