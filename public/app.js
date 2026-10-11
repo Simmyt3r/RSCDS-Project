@@ -7,7 +7,20 @@ async function request(url,options={}){const res=await fetch(url,{...options,hea
 function textNode(el,s){el.textContent=s;return el;}
 function clearMap(){state.points=[];if(state.rectangle){state.rectangle.remove();state.rectangle=null;} $('map-coords').textContent='No region selected';}
 function setBox(a,b){if(!state.map)return;clearMap();const bounds=L.latLngBounds(a,b);state.rectangle=L.rectangle(bounds,{color:'#118c88',weight:2,fillOpacity:.11}).addTo(state.map);state.map.fitBounds(bounds,{padding:[35,35]});const w=bounds.getWest(),s=bounds.getSouth(),e=bounds.getEast(),n=bounds.getNorth();const value=[w,s,e,n].map(x=>x.toFixed(5)).join(',');$('bbox').value=value;$('map-coords').textContent='AOI: '+value;buildCommand();}
-function initializeMap(){if(typeof L==='undefined'){$('map').textContent='Map tiles unavailable; scene searching still works.';return;}state.map=L.map('map',{scrollWheelZoom:false}).setView([9.05,8.7],6);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(state.map);state.map.on('click',e=>{state.points.push(e.latlng);if(state.points.length===2){setBox(state.points[0],state.points[1]);state.points=[];}else toast('Click the opposite corner of your study area.');});}
+function initializeMap(){
+ if(typeof L==='undefined'){
+  $('map').textContent='Map library unavailable. Enter your coordinates in Satellite imagery.';
+  $('map-status').textContent='Map library unavailable; analysis inputs still work without the map.';
+  return;
+ }
+ state.map=L.map('map',{scrollWheelZoom:false,zoomControl:true}).setView([9.05,8.7],6);
+ state.map.on('click',e=>{
+  state.points.push(e.latlng);
+  if(state.points.length===2){setBox(state.points[0],state.points[1]);state.points=[];}
+  else toast('Click the opposite corner of your study area.');
+ });
+ window.RSCDSBaseMap?.attach(state.map);
+}
 function buildCommand(){const bbox=$('bbox').value.trim(),before=$('before').value.trim(),after=$('after').value.trim();const cmd=`bbox: ${bbox}\nbefore: ${before}\nafter: ${after}`;$('worker-command').textContent=cmd;return cmd;}
 function showScenes(id,data){const el=$(id);el.replaceChildren();if(!data.features.length){el.innerHTML='<div class="empty">No scenes found in this date range.</div>';return;}for(const item of data.features){const div=document.createElement('div');div.className='scene';const left=document.createElement('div');const title=document.createElement('strong');title.textContent=(item.date||'Unknown date').slice(0,10);const detail=document.createElement('small');detail.textContent=(item.platform||'Sentinel-2')+' · '+item.id;left.append(title,detail);const right=document.createElement('span');const cloud=Number(item.cloudCover||0);right.className='percent '+(cloud>30?'cloudy':'');right.textContent=cloud.toFixed(0)+'% clouds';div.append(left,right);el.append(div);}}
 async function searchScenes(){$('search-scenes').disabled=true;const area=$('bbox').value.trim();buildCommand();$('before-results').textContent='Searching public imagery...';$('after-results').textContent='Searching public imagery...';try{const [a,b]=await Promise.all([request('/api/scenes?bbox='+encodeURIComponent(area)+'&dates='+encodeURIComponent($('before').value.trim())),request('/api/scenes?bbox='+encodeURIComponent(area)+'&dates='+encodeURIComponent($('after').value.trim()))]);showScenes('before-results',a);showScenes('after-results',b);toast('Real STAC scene metadata loaded. Select scenes in the analysis worker.');}catch(e){['before-results','after-results'].forEach(id=>textNode($(id),e.message));toast(e.message);}finally{$('search-scenes').disabled=false;}}
@@ -130,7 +143,7 @@ function initializeDashboard(){
  ['bbox','before','after'].forEach(id=>$(id)?.addEventListener('input',buildCommand));
  try{buildCommand();}catch(error){console.warn('RSCDS inputs unavailable',error);}
  try{initializeMap();}catch(error){
-  const map=$('map');if(map)map.textContent='Interactive map unavailable. Enter bounding-box coordinates in Satellite imagery.';
+  const map=$('map');if(map)map.textContent='Interactive map unavailable. Enter bounding-box coordinates in Satellite imagery.';const status=$('map-status');if(status)status.textContent='Map failed to initialize, but the imagery search and queue remain available.';
   console.warn('Map initialization failed; navigation and controls remain available.',error);
  }
  void health();

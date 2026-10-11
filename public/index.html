@@ -1,8 +1,8 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1725">
 <title>RSCDS | Remote Settlement Change Detection</title>
-<link rel="preconnect" href="https://unpkg.com"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="/navigation.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
+<link rel="preconnect" href="https://unpkg.com"><link rel="preconnect" href="https://tiles.openfreemap.org"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/styles.css"><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script><script defer src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script><script defer src="/map-basemap.js"></script><script defer src="/navigation.js"></script><script defer src="/app.js"></script><script defer src="/setup-wizard.js"></script>
 </head><body>
 <div class="app">
  <aside class="sidebar" id="app-sidebar" aria-label="Application sidebar">
@@ -16,7 +16,7 @@
    <a class="nav" data-tab="review" href="#review"><span aria-hidden="true">✓</span> Review workspace</a>
    <a class="nav" data-tab="setup" href="#setup"><span aria-hidden="true">⚙</span> Deploy & configure</a>
   </nav>
-  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3.5<br>Private by default • Human-reviewed</p></div>
+  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.3.6<br>Private by default • Human-reviewed</p></div>
  </aside>
  <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" hidden></div>
  <main class="main">
@@ -26,7 +26,7 @@
   <section class="tabpane active" id="tab-overview">
    <div class="pagehead"><div><div class="eyebrow">GEOSPATIAL INTELLIGENCE / RESEARCH</div><h1>Settlement change monitoring</h1><p>Compare public satellite scenes across time, inspect change candidates, and maintain a verifiable review trail.</p></div><button class="primary" id="go-imagery">＋ New analysis</button></div>
    <div class="metrics"><div class="metric"><div class="meta">Available imagery provider <span>◉</span></div><strong>Sentinel-2</strong><small>Element84 Earth Search STAC</small></div><div class="metric"><div class="meta">Candidate polygons <span>◇</span></div><strong id="stat-candidates">—</strong><small>Protected database records</small></div><div class="metric"><div class="meta">Verified records <span>✓</span></div><strong id="stat-verified">—</strong><small>Human evidence required</small></div><div class="metric"><div class="meta">Database <span>▣</span></div><strong id="stat-db">Checking</strong><small>Aiven PostgreSQL + PostGIS</small></div></div>
-   <div class="split"><div class="panel"><div class="panelhead"><div><h2>Study area map</h2><p>Click two opposite corners to select a bounding box</p></div><span class="pill pale">Area of interest</span></div><div id="map" role="application" aria-label="Map of study area"></div><div class="map-footer"><span id="map-coords">No region selected</span><button class="linkbutton" id="map-clear">Clear selection</button></div></div>
+   <div class="split"><div class="panel"><div class="panelhead"><div><h2>Study area map</h2><p>Click two opposite corners to select a bounding box</p></div><span class="pill pale">Area of interest</span></div><div id="map" role="application" aria-label="Map of study area"></div><div class="map-footer"><span id="map-coords">No region selected</span><div class="map-actions"><button type="button" class="secondary" id="map-grid-only" aria-pressed="false">Use coordinate grid</button><button type="button" class="secondary" id="map-retry" hidden>Retry street map</button><button class="linkbutton" id="map-clear">Clear selection</button></div></div><p id="map-status" class="map-status" role="status" aria-live="polite">Loading map background…</p><p class="map-provider-note">The street basemap is supplied by OpenFreeMap, which receives map tile requests for the viewed area. For sensitive study areas, select coordinate-grid mode before navigating to those locations.</p></div>
      <div class="panel compact"><div class="panelhead"><div><h2>Analysis workflow</h2><p>Five controlled stages</p></div></div><ol class="process"><li><span>01</span><div><b>Select study area</b><p>Choose an AOI and comparison dates</p></div></li><li><span>02</span><div><b>Discover source scenes</b><p>Inspect cloud coverage and acquisition metadata</p></div></li><li><span>03</span><div><b>Queue private analysis</b><p>Start the worker through this dashboard, no coordinate inputs in public CI</p></div></li><li><span>04</span><div><b>Import candidates</b><p>Authenticated GeoJSON ingestion to PostGIS</p></div></li><li><span>05</span><div><b>Human review</b><p>Verify/reject with supporting evidence</p></div></li></ol><button class="secondary full" id="go-setup">Open setup guide →</button></div></div>
   </section>
   <section class="tabpane" id="tab-imagery">

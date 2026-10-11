@@ -15,7 +15,7 @@ if(cfg){
  check(cfg.buildCommand==='npm run build','Vercel build must run the preflight.');
  check(cfg.functions?.['api/*.js']?.maxDuration<=60,'API maximum duration exceeds Hobby allowance.');
 }
-for(const name of ['index.html','setup.html','app.js','navigation.js','setup-wizard.js','styles.css','schema.sql']){
+for(const name of ['index.html','setup.html','app.js','map-basemap.js','navigation.js','setup-wizard.js','styles.css','schema.sql']){
  check(fs.existsSync(file('public/'+name)),'Missing public asset: '+name);
 }
 const endpoints=['health','scenes','detections','review','jobs','worker'];
@@ -26,7 +26,7 @@ for(const name of endpoints){
 }
 if(fs.existsSync(file('public/index.html'))){
  const html=read('public/index.html');
- for(const asset of ['app.js','navigation.js','setup-wizard.js','styles.css'])check(html.includes('/'+asset),'Homepage does not reference '+asset);
+ for(const asset of ['app.js','map-basemap.js','navigation.js','setup-wizard.js','styles.css'])check(html.includes('/'+asset),'Homepage does not reference '+asset);
  check(html.includes('id="map"'),'Missing satellite map container.');
 }
 if(fs.existsSync(file('public/setup.html'))){

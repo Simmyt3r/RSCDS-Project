@@ -17,7 +17,7 @@ export default async function handler(req,res){
   finally{if(sql)await sql.end();}
  }
  return send(res,200,{
-  app:'RSCDS',version:'0.3.5',catalog:'Earth Search STAC',database:db,
+  app:'RSCDS',version:'0.3.6',catalog:'Earth Search STAC',database:db,
   adminConfigured:Boolean(process.env.ADMIN_API_KEY&&process.env.ADMIN_API_KEY.length>=24),
   workerConfigured:Boolean(process.env.WORKER_API_KEY&&process.env.WORKER_API_KEY.length>=24),
   keysIndependent:Boolean(process.env.ADMIN_API_KEY&&process.env.WORKER_API_KEY&&process.env.ADMIN_API_KEY!==process.env.WORKER_API_KEY),

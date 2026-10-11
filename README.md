@@ -82,3 +82,11 @@ The new Python worker STAC unit tests cover cloud filtering, missing bands and c
 ## Navigation reliability (v0.3.5)
 
 RSCDS now loads independent navigation code before the map/dashboard script, so a Leaflet initialization error cannot disable the sidebar. Five sidebar destinations use real hash links that support reload, browser history, keyboard navigation and deep links. On narrow screens, use **Menu** to open a slide-in drawer; select a section, tap outside, tap the Close button, or press Escape to close it. The main JavaScript also binds critical controls before initializing the optional map and handles map failures gracefully. Credentials remain tab-local and never enter navigation URLs.
+
+## Map basemap fix (v0.3.6)
+
+The map no longer requests tiles from OpenStreetMap's volunteer-run standard tile servers, which returned HTTP 403 for the deployed app. It now uses OpenFreeMap's public no-API-key vector basemap through MapLibre GL (Leaflet adapter), with visible OpenFreeMap and OpenStreetMap attribution. See https://openfreemap.org/quick_start/ for the provider's official usage instructions. External tile availability is best effort.
+
+**Coordinate-grid mode:** Select **Use coordinate grid** below the map to switch off third-party basemap requests and display a procedural coordinate grid instead. When the vector map fails to initialize, cannot use WebGL, reports repeated errors, or times out, the UI automatically falls back to this grid while preserving two-click study-area selection, review polygons, zoom, and pan. **Retry street map** is available after fallback. This grid provides orientation by coordinates only, not roads or real satellite imagery. The imagery analysis worker continues to use actual Sentinel-2 sources independently of the display basemap.
+
+**Privacy:** A third-party street map can learn the approximate area being viewed through tile requests. Avoid navigating to sensitive humanitarian locations with the external basemap enabled; use coordinate grid for that work, and do not put sensitive study areas into public services.
