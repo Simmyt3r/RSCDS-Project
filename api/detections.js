@@ -1,4 +1,5 @@
 import {insertFeatures} from './_ingest.js';
+import {validUUID} from './_jobs.js';
 import {send,requireAdmin,getDB} from './_helpers.js';
 
 export default async function handler(req,res){
@@ -7,8 +8,16 @@ export default async function handler(req,res){
  try{
   sql=getDB();
   if(req.method==='GET'){
-   const rows=await sql`SELECT id,site_label,area_m2,score,review_status,source,scene_before,scene_after,ST_AsGeoJSON(geom)::json AS geometry,created_at FROM rscds.detections WHERE job_id IS NULL OR EXISTS (SELECT 1 FROM rscds.analysis_jobs j WHERE j.id=job_id AND j.status='completed') ORDER BY created_at DESC LIMIT 100`;
-   return send(res,200,{type:'FeatureCollection',features:rows.map(x=>({type:'Feature',id:x.id,geometry:x.geometry,properties:{site_label:x.site_label,area_m2:x.area_m2,score:x.score,review_status:x.review_status,source:x.source,scene_before:x.scene_before,scene_after:x.scene_after,created_at:x.created_at}})),limit:100});
+   const jobId=req.query?.job_id||null;
+   if(jobId!==null && !validUUID(jobId))throw Error('Invalid analysis job identifier');
+   // Only completed analysis outputs and manual imports are reviewable.
+   // Scoping by job_id prevents mixing candidate polygons from separate runs.
+   const rows=await sql`SELECT id,job_id,site_label,area_m2,score,review_status,source,scene_before,scene_after,ST_AsGeoJSON(geom)::json AS geometry,created_at
+     FROM rscds.detections
+     WHERE (${jobId}::uuid IS NULL OR job_id=${jobId}::uuid)
+     AND (job_id IS NULL OR EXISTS (SELECT 1 FROM rscds.analysis_jobs j WHERE j.id=job_id AND j.status='completed'))
+     ORDER BY created_at DESC LIMIT 100`;
+   return send(res,200,{type:'FeatureCollection',features:rows.map(x=>({type:'Feature',id:x.id,geometry:x.geometry,properties:{job_id:x.job_id,site_label:x.site_label,area_m2:x.area_m2,score:x.score,review_status:x.review_status,source:x.source,scene_before:x.scene_before,scene_after:x.scene_after,created_at:x.created_at}})),limit:100});
   }
   if(req.method==='POST'){
    const body=typeof req.body==='string'?JSON.parse(req.body):req.body;

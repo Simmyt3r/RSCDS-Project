@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const state={map:null,rectangle:null,points:[],key:'',detections:[],candidateLayer:null};
+const state={map:null,rectangle:null,points:[],key:'',detections:[],candidateLayer:null,selectedJob:null};
 function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),4200);}
 function tab(name){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(b=>b.classList.toggle('active',b.id==='tab-'+name));$('crumb').textContent=name[0].toUpperCase()+name.slice(1);if(name==='overview'&&state.map)setTimeout(()=>state.map.invalidateSize(),180);}
 async function request(url,options={}){const res=await fetch(url,{...options,headers:{...(options.headers||{}),...(state.key?{Authorization:'Bearer '+state.key}:{})}});const d=await res.json();if(!res.ok)throw Error(d.error||res.statusText);return d;}
@@ -10,8 +10,22 @@ function initializeMap(){if(typeof L==='undefined'){$('map').textContent='Map ti
 function buildCommand(){const bbox=$('bbox').value.trim(),before=$('before').value.trim(),after=$('after').value.trim();const cmd=`bbox: ${bbox}\nbefore: ${before}\nafter: ${after}`;$('worker-command').textContent=cmd;return cmd;}
 function showScenes(id,data){const el=$(id);el.replaceChildren();if(!data.features.length){el.innerHTML='<div class="empty">No scenes found in this date range.</div>';return;}for(const item of data.features){const div=document.createElement('div');div.className='scene';const left=document.createElement('div');const title=document.createElement('strong');title.textContent=(item.date||'Unknown date').slice(0,10);const detail=document.createElement('small');detail.textContent=(item.platform||'Sentinel-2')+' · '+item.id;left.append(title,detail);const right=document.createElement('span');const cloud=Number(item.cloudCover||0);right.className='percent '+(cloud>30?'cloudy':'');right.textContent=cloud.toFixed(0)+'% clouds';div.append(left,right);el.append(div);}}
 async function searchScenes(){$('search-scenes').disabled=true;const area=$('bbox').value.trim();buildCommand();$('before-results').textContent='Searching public imagery...';$('after-results').textContent='Searching public imagery...';try{const [a,b]=await Promise.all([request('/api/scenes?bbox='+encodeURIComponent(area)+'&dates='+encodeURIComponent($('before').value.trim())),request('/api/scenes?bbox='+encodeURIComponent(area)+'&dates='+encodeURIComponent($('after').value.trim()))]);showScenes('before-results',a);showScenes('after-results',b);toast('Real STAC scene metadata loaded. Select scenes in the analysis worker.');}catch(e){['before-results','after-results'].forEach(id=>textNode($(id),e.message));toast(e.message);}finally{$('search-scenes').disabled=false;}}
-async function getDetections(){try{const data=await request('/api/detections');state.detections=data.features||[];if(state.map&&typeof L!=='undefined'){if(state.candidateLayer)state.candidateLayer.remove();state.candidateLayer=L.geoJSON({type:'FeatureCollection',features:state.detections},{style:f=>({color:f.properties.review_status==='verified'?'#14866f':f.properties.review_status==='rejected'?'#be6962':'#d18a32',fillOpacity:.13,weight:2}),onEachFeature:(f,layer)=>layer.bindPopup('Candidate #'+f.id+' | '+f.properties.review_status)}).addTo(state.map);}$('stat-candidates').textContent=state.detections.length;$('stat-verified').textContent=state.detections.filter(x=>x.properties.review_status==='verified').length;showDetections('detection-results',false);showDetections('review-results',true);}catch(e){$('detection-results').textContent=e.message;$('review-results').textContent=e.message;toast(e.message);}}
-function showDetections(id,review){const el=$(id);el.replaceChildren();if(!state.detections.length){el.innerHTML='<div class="empty">No candidates imported. Run the Python worker, then upload GeoJSON.</div>';return;}for(const f of state.detections){const p=f.properties,div=document.createElement('div'),meta=document.createElement('div');div.className='candidate';meta.className='candidate-meta';const h=document.createElement('strong');h.textContent=(p.site_label||'Candidate')+' #'+f.id;const info=document.createElement('small');info.textContent='Area '+Math.round(p.area_m2).toLocaleString()+' m² | Score '+Number(p.score).toFixed(2)+' | '+p.review_status+' | '+(p.created_at||'').slice(0,10);const provenance=document.createElement('small');provenance.textContent='Source: '+(p.source||'').slice(0,160);meta.append(h,info,provenance);div.append(meta);if(review&&p.review_status==='unverified'){const tools=document.createElement('div');tools.className='candidate-actions';for(const option of ['verified','rejected']){const button=document.createElement('button');button.className=option==='verified'?'primary':'secondary';button.textContent=option==='verified'?'Verify':'Reject';button.onclick=()=>reviewDetection(f.id,option);tools.append(button);}div.append(tools);}el.append(div);}}
+async function getDetections(){try{
+ const uri=state.selectedJob?'/api/detections?job_id='+encodeURIComponent(state.selectedJob):'/api/detections';
+ const data=await request(uri);state.detections=data.features||[];if(state.map&&typeof L!=='undefined'){if(state.candidateLayer)state.candidateLayer.remove();state.candidateLayer=L.geoJSON({type:'FeatureCollection',features:state.detections},{style:f=>({color:f.properties.review_status==='verified'?'#14866f':f.properties.review_status==='rejected'?'#be6962':'#d18a32',fillOpacity:.13,weight:2}),onEachFeature:(f,layer)=>layer.bindPopup('Candidate #'+f.id+' | '+f.properties.review_status)}).addTo(state.map);}if(!state.selectedJob){$('stat-candidates').textContent=state.detections.length;$('stat-verified').textContent=state.detections.filter(x=>x.properties.review_status==='verified').length;}showDetections('detection-results',false);showDetections('review-results',true);}catch(e){$('detection-results').textContent=e.message;$('review-results').textContent=e.message;toast(e.message);}}
+function showDetections(id,review){const el=$(id);el.replaceChildren();
+ if(state.selectedJob){
+  const filter=document.createElement('div');filter.className='job-filter';
+  const label=document.createElement('span');label.textContent='Showing completed analysis '+state.selectedJob.slice(0,8);
+  const clear=document.createElement('button');clear.className='secondary';clear.textContent='Show all candidates';
+  clear.onclick=()=>{state.selectedJob=null;void getDetections();};
+  filter.append(label,clear);el.append(filter);
+ }
+ if(!state.detections.length){
+  const empty=document.createElement('div');empty.className='empty';
+  empty.textContent=state.selectedJob?'No changed polygons were produced in this completed run. This does not prove there was no settlement change.':'No reviewable candidates yet. Queue and complete an analysis, or import a validated GeoJSON file.';
+  el.append(empty);return;
+ }for(const f of state.detections){const p=f.properties,div=document.createElement('div'),meta=document.createElement('div');div.className='candidate';meta.className='candidate-meta';const h=document.createElement('strong');h.textContent=(p.site_label||'Candidate')+' #'+f.id;const info=document.createElement('small');info.textContent='Area '+Math.round(p.area_m2).toLocaleString()+' m² | Score '+Number(p.score).toFixed(2)+' | '+p.review_status+' | '+(p.created_at||'').slice(0,10);const provenance=document.createElement('small');provenance.textContent='Source: '+(p.source||'').slice(0,160);meta.append(h,info,provenance);div.append(meta);if(review&&p.review_status==='unverified'){const tools=document.createElement('div');tools.className='candidate-actions';for(const option of ['verified','rejected']){const button=document.createElement('button');button.className=option==='verified'?'primary':'secondary';button.textContent=option==='verified'?'Verify':'Reject';button.onclick=()=>reviewDetection(f.id,option);tools.append(button);}div.append(tools);}el.append(div);}}
 async function reviewDetection(id,status){const reviewer=prompt('Reviewer name (required):');if(!reviewer)return;const notes=prompt('Independent evidence and review rationale (minimum 10 characters):');if(!notes)return;try{await request('/api/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,reviewer,notes})});toast('Review saved with evidence trail');getDetections();}catch(e){toast(e.message);}}
 async function uploadGeoJSON(){
  const file=$('geojson-file').files?.[0];if(!file)return toast('Choose a GeoJSON file.');
@@ -38,11 +52,32 @@ function useAnalysisKey(){
  $('job-notice').textContent='Administrator key active in this browser tab only.';
  void getJobs();
 }
+function renderQueueStatus(counts){
+ const summary=$('queue-summary');if(!summary)return;
+ summary.replaceChildren();
+ const labels=[['queued','Queued'],['running','Running'],['completed','Completed'],['failed','Failed']];
+ for(const [key,label] of labels){
+  const item=document.createElement('div');item.className='queue-count';
+  const value=document.createElement('strong');value.textContent=String(counts[key]||0);
+  const title=document.createElement('span');title.textContent=label;
+  item.append(value,title);summary.append(item);
+ }
+ const guide=$('queue-guidance');
+ if(counts.running)guide.textContent='A worker has leased a job. Check this page again for results; imagery downloads and raster analysis happen outside Vercel.';
+ else if(counts.queued)guide.textContent='Your analysis is queued. GitHub Actions checks the queue on its schedule. The Run workflow button can trigger an earlier check.';
+ else if(counts.failed)guide.textContent='No active jobs. Some analyses failed; review the sanitized error details and use Retry if appropriate.';
+ else if(counts.completed)guide.textContent='No active jobs. Completed results are ready to inspect below; each change polygon still requires independent human evidence.';
+ else guide.textContent='No analysis has been submitted. The successful GitHub workflow only checked for work. Select an area and dates, then press Queue secure analysis.';
+}
+function viewJobResults(jobId){
+ state.selectedJob=jobId;tab('detections');void getDetections();
+}
 async function getJobs(){
  if(!state.key){$('job-results').textContent='Enter the administrator key and unlock analysis.';return;}
  const box=$('job-results');box.textContent='Loading private queue...';
  try{
   const data=await request('/api/jobs');box.replaceChildren();
+  renderQueueStatus(data.summary||{queued:0,running:0,completed:0,failed:0});
   if(!data.jobs?.length){box.innerHTML='<div class="empty">No jobs yet. Select an area, choose dates, then queue an analysis.</div>';return;}
   for(const job of data.jobs){
    const row=document.createElement('div');row.className='job-row';
@@ -53,7 +88,9 @@ async function getJobs(){
    const status=document.createElement('span');status.className='job-status job-'+job.status;status.textContent=job.status;
    summary.append(title,dates,extent);row.append(summary,status);
    if(job.status==='completed'){
-    const count=document.createElement('small');count.textContent=`${job.result_count} newly stored candidate(s). Review evidence before verification.`;summary.append(count);
+    const count=document.createElement('small');count.textContent=`${job.result_count} new candidate(s) stored. A result count of zero is not evidence that there was no settlement change.`;summary.append(count);
+    const inspect=document.createElement('button');inspect.className='secondary';inspect.textContent='View run results';
+    inspect.onclick=()=>viewJobResults(job.id);row.append(inspect);
    }
    if(job.status==='failed'){
     const detail=document.createElement('small');detail.textContent=job.error_message||'Processing failed';summary.append(detail);
@@ -80,4 +117,10 @@ async function queueAnalysis(){
 async function health(){try{const h=await request('/api/health');const ready=h.database==='ready';$('systemstate').textContent='Website online';document.querySelector('.state-dot').classList.add('ok');$('db-pill').textContent='DB: '+h.database;$('db-pill').className='pill '+(ready?'ok':'');$('stat-db').textContent=ready?'Connected':h.database;$('setup-db').textContent=ready?'Ready':h.database;$('setup-auth').textContent=h.adminConfigured?'Configured':'Missing';}catch(e){$('systemstate').textContent='Check service';$('db-pill').textContent='Unavailable';}}
 window.addEventListener('load',()=>{initializeMap();health();buildCommand();document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('go-imagery').onclick=()=>tab('imagery');$('go-setup').onclick=()=>tab('setup');$('map-clear').onclick=clearMap;$('notice-close').onclick=()=>document.querySelector('.notice').remove();$('search-scenes').onclick=searchScenes;$('copy-command').onclick=()=>navigator.clipboard.writeText(buildCommand()).then(()=>toast('Analysis inputs copied for GitHub Actions'));$('save-key').onclick=()=>{state.key=$('admin-key').value;toast('Key used for requests in this browser tab; not persisted');getDetections();getJobs();};$('load-detections').onclick=getDetections;$('upload-geojson').onclick=uploadGeoJSON;$('use-job-key').onclick=useAnalysisKey;$('queue-analysis').onclick=queueAnalysis;$('refresh-jobs').onclick=getJobs;document.querySelectorAll('.copy-inline').forEach(b=>b.onclick=()=>navigator.clipboard.writeText(b.dataset.copy).then(()=>toast('Copied')));['bbox','before','after'].forEach(id=>$(id).addEventListener('input',buildCommand));});
 
+// Poll only while the operator is looking at the authenticated analysis screen.
+// Never persist keys or coordinates in URLs, localStorage or GitHub workflow inputs.
+setInterval(()=>{
+ if(state.key&&document.visibilityState==='visible'&&document.getElementById('tab-imagery')?.classList.contains('active'))
+  void getJobs();
+},60000);
 window.addEventListener('rscds:toast',e=>toast(e.detail));

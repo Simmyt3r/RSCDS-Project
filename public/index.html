@@ -37,6 +37,10 @@
     <div class="rowform" style="margin-top:14px"><label>Max scene cloud coverage %<input id="job-cloud" type="number" min="0" max="60" value="35"></label><label>Min contiguous changed pixels<input id="job-pixels" type="number" min="2" max="100" value="9"></label><button class="primary" id="queue-analysis">Queue secure analysis</button></div>
     <p class="helper warning-note">Processing limit: 0.09° longitude × 0.09° latitude to preserve useful spatial detail. Runs are research-only, not confirmed settlement classifications. Keep the GitHub repository private before processing humanitarian or otherwise protected areas; worker logs intentionally omit coordinates.</p>
     <div class="actions-row"><button class="secondary" id="refresh-jobs">Refresh queue</button><a class="linkbutton action-link" href="https://github.com/Simmyt3r/RSCDS-Project/actions/workflows/satellite-analysis.yml" target="_blank" rel="noopener noreferrer">Trigger next worker check in GitHub ↗</a><small>Automatically checks every 30 minutes; scheduled runs can be delayed.</small></div>
+    <div class="queue-status-box" aria-label="Private job status">
+      <div id="queue-summary" class="queue-summary" aria-live="polite">Unlock analysis to see private queue counts.</div>
+      <p id="queue-guidance" class="helper">A green GitHub workflow can mean the worker checked successfully but found no jobs. Queue an analysis here first.</p>
+    </div>
     <div id="job-notice" class="helper" role="status" aria-live="polite">Authenticate to submit and view analysis jobs.</div>
     <div id="job-results" class="result-list"><div class="empty">No jobs loaded.</div></div>
    </div>

@@ -72,3 +72,9 @@ The GitHub worker remains separate and requires the **Actions variable** `RSCDS_
 ## Satellite worker compatibility (v0.3.4)
 
 The offline raster worker now matches the verified live catalogue lookup: it searches with portable core STAC fields and applies cloud-cover and band-availability screening locally. GitHub CI executes every Python test in `tests/`, including worker scene-selection checks. A green scheduled workflow with **no queued job** means the worker polled successfully but did not process imagery. Queue a non-sensitive test area from the RSCDS dashboard to start an actual analysis.
+
+## Operator workflow and result provenance (v0.3.4)
+
+A successful worker workflow does not necessarily mean imagery was processed: if the queue is empty, the GitHub job ends successfully and skips raster dependencies. The Satellite imagery screen now shows authenticated queue totals (queued, running, completed and failed), a clear explanation for idle workers, and automatic 60-second polling while its tab is visible. Each completed analysis has **View run results**, which scopes authenticated GeoJSON retrieval to that job. An analysis with zero changed polygons is **not** proof that no settlement change occurred.
+
+The new Python worker STAC unit tests cover cloud filtering, missing bands and catalogue compatibility. GitHub CI executes all Python tests, including these offline test cases.

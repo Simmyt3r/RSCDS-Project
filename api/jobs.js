@@ -9,7 +9,10 @@ export default async function handler(req,res){
     sql=getDB();
     if(req.method==='GET'){
       const rows=await sql`SELECT id,bbox,before_window,after_window,cloud_max,min_pixels,status,attempts,result_count,error_message,created_at,started_at,finished_at FROM rscds.analysis_jobs ORDER BY created_at DESC LIMIT 50`;
-      return send(res,200,{jobs:rows});
+      const counts=await sql`SELECT status,COUNT(*)::int AS count FROM rscds.analysis_jobs GROUP BY status`;
+      const summary={queued:0,running:0,completed:0,failed:0};
+      for(const row of counts)if(Object.prototype.hasOwnProperty.call(summary,row.status))summary[row.status]=row.count;
+      return send(res,200,{jobs:rows,summary});
     }
     const body=typeof req.body==='string'?JSON.parse(req.body):req.body;
     if(body?.action==='retry'){

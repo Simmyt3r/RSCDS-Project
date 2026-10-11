@@ -13,3 +13,13 @@
 .job-queued{background:#e9f2ff;color:#315a93}.job-running{background:#fff2df;color:#865c22}.job-completed{background:#e5f8f0;color:#167553}.job-failed{background:#ffebec;color:#9b3e45}
 #analysis-queue-panel .rowform label{min-width:0}#analysis-queue-panel input{width:100%}#job-results{margin-top:16px}
 @media(max-width:700px){#analysis-queue-panel .rowform button{width:100%}.job-row{align-items:flex-start}.job-status{align-self:flex-start}}
+
+/* Private analysis statuses: clear differentiation between idle and processed jobs. */
+.queue-status-box{border:1px solid #d5e7ea;border-radius:10px;background:#f6fbfb;padding:15px;margin:14px 0;}
+.queue-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+.queue-count{background:white;border:1px solid #e1ebed;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;}
+.queue-count strong{font-size:21px;color:#174156;line-height:1.2;}
+.queue-count span{font-size:11px;color:#697d8c;font-weight:700;}
+.job-filter{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#eaf5f5;border:1px solid #c6e2e3;border-radius:9px;padding:10px 12px;margin-bottom:12px;color:#176169;font-size:12px;font-weight:700;}
+.job-filter button{white-space:normal;}
+@media(max-width:550px){.queue-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.job-filter{flex-direction:column;align-items:stretch;}}
