@@ -62,5 +62,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS rscds_job_feature_hash_idx
  ON rscds.detections(job_id,feature_hash) WHERE job_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS rscds_manual_feature_hash_idx
  ON rscds.detections(feature_hash) WHERE job_id IS NULL;
--- Replace the old global uniqueness rule without deleting any candidate rows.
-DROP INDEX IF EXISTS rscds.rscds_feature_hash_idx;
+-- Existing installations may retain the historical global unique index.
+-- Ingested worker hashes include their job ID, so repeats across distinct runs
+-- remain unique without any DROP operation or destructive database change.

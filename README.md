@@ -117,8 +117,10 @@ Open any completed run from the private analysis queue via **Open visual evidenc
 
 ## v0.5.1 reliability and data integrity
 
-This is a quality release, not a feature expansion. Duplicate fingerprints are now scoped to each analysis job (or to manual imports), preserving repeat observations of the same candidate in independent runs. The old globally unique fingerprint index is safely replaced with separate partial unique indexes; the migration does **not** delete existing detections or review decisions.
+This is a quality release, not a feature expansion. Duplicate fingerprints are now scoped to each analysis job (or to manual imports), preserving repeat observations of the same candidate in independent runs. Fingerprints now include the analysis job ID, preventing collisions even with older globally unique indexes still present. The migration adds job-specific and manual-import indexes but does **not** drop an existing index or delete detection/review records.
 
 Expired worker leases are reacquired within a database transaction, and any partial batches from an interrupted attempt are removed **only for the failed in-progress attempt** before reprocessing. Incoming batches lock the job's lease row before writing, so an outdated worker cannot race an expired lease recovery. Worker completion and failure also verify lease expiry. Observation-period validation now rejects impossible calendar dates rather than accepting JavaScript's rollover parsing.
 
 Apply the idempotent `scripts/schema.sql` index statements to Aiven before deploying this version. The live rollout must follow the deployment limit policy; GitHub source and CI are not proof that production has updated.
+
+**Compatibility note:** The Aiven connector cannot execute `DROP INDEX`. No manual index removal is needed: run-scoped fingerprints preserve per-run results under both new and historical schemas. The new partial indexes have already been added to RSCDS's isolated schema.

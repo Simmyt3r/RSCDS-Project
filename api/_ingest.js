@@ -4,7 +4,7 @@ import {validateFeature} from './_validators.js';
 // Reused by manual imports and leased analysis jobs. Caller owns transaction.
 export async function insertFeatures(tx,features,jobId=null){
   if(!Array.isArray(features)||features.length<1||features.length>100)throw Error('Use 1–100 GeoJSON features per import batch');
-  const prepared=features.map(f=>({p:validateFeature(f),geometry:JSON.stringify(f.geometry),hash:fingerprint(f)}));
+  const prepared=features.map(f=>({p:validateFeature(f),geometry:JSON.stringify(f.geometry),hash:fingerprint(f,jobId)}));
   let imported=0;
   for(const f of prepared){
     const p=f.p;
