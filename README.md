@@ -124,3 +124,7 @@ Expired worker leases are reacquired within a database transaction, and any part
 Apply the idempotent `scripts/schema.sql` index statements to Aiven before deploying this version. The live rollout must follow the deployment limit policy; GitHub source and CI are not proof that production has updated.
 
 **Compatibility note:** The Aiven connector cannot execute `DROP INDEX`. No manual index removal is needed: run-scoped fingerprints preserve per-run results under both new and historical schemas. The new partial indexes have already been added to RSCDS's isolated schema.
+
+### Troubleshooting inconsistent deployment database readiness
+
+The deployment's public health JSON now returns four non-sensitive booleans in `databaseChecks` if it connects: `detections`, `jobs`, `jobReference`, and `sceneProvenance`. It does **not** expose database connection strings, credentials, locations, or table content. If your Aiven PG Studio verifies all columns but the Vercel deployment reports a missing column, compare the configured Vercel `DATABASE_URL` against the correct Aiven service and database **inside those providers' secure consoles**. A successful check against one Aiven database does not prove that Vercel points at that same database. Do not roll out this version until the production target returns `database:"ready"`.
