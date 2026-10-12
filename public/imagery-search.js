@@ -46,7 +46,7 @@
    const reference=document.createElement('small');reference.className='scene-ref';reference.textContent=String(scene.id||'');
    info.append(title,subtitle,reference);
    const actions=document.createElement('div');actions.className='scene-actions';
-   const clouds=Number(scene.cloudCover);
+   const clouds=scene.cloudCover==null?NaN:Number(scene.cloudCover);
    const coverage=document.createElement('span');coverage.className='percent '+(clouds>30?'cloudy':'');
    coverage.textContent=Number.isFinite(clouds)?clouds.toFixed(1)+'% scene clouds':'Cloud unknown';
    actions.append(coverage);

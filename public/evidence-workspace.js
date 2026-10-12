@@ -14,9 +14,34 @@ async function api(path,options={}){
  if(!response.ok)throw Error(body.error||'Private request rejected (HTTP '+response.status+')');
  return body;
 }
+function resetEvidence(message='No verified analysis record loaded.'){
+ S.loaded=false;S.job=null;S.summary=null;S.features=[];S.next=null;S.selected=null;
+ if(S.map&&S.layer){S.map.removeLayer(S.layer);S.layer=null;}
+ for(const id of ['evidence-photos','evidence-report','evidence-geojson','ev-submit']){
+  if($(id))$(id).disabled=true;
+ }
+ if($('evidence-next'))$('evidence-next').hidden=true;
+ for(const id of ['ev-unverified','ev-verified','ev-rejected','ev-valid','ev-before-date','ev-after-date'])
+  text(id,'—');
+ text('ev-before','No scene loaded');text('ev-after','No scene loaded');
+ text('ev-method','Processing method: —');text('evidence-state','No record');
+ text('ev-selected','Select an unverified candidate after loading evidence.');
+ text('evidence-page-status','');
+ const box=$('evidence-candidates');
+ if(box){
+  box.replaceChildren();
+  const note=document.createElement('div');note.className='empty';note.textContent=message;
+  box.append(note);
+ }
+}
 function date(value){if(!value)return 'Not recorded';const dt=new Date(value);return Number.isFinite(dt.getTime())?dt.toLocaleString():String(value);}
 function text(id,value){const el=$(id);if(el)el.textContent=value==null?'—':String(value);}
-function setAuth(key){S.key=String(key||'').trim();if(S.key)text('evidence-status','Administrator key held in this browser tab only.');}
+function setAuth(key){
+ const next=String(key||'').trim();
+ if(S.key&&next!==S.key)resetEvidence('Authorization changed. Open a completed analysis again.');
+ S.key=next;
+ if(S.key)text('evidence-status','Administrator key held in this browser tab only.');
+}
 async function listJobs(){
  const key=$('evidence-key')?.value.trim();if(key)setAuth(key);
  const select=$('evidence-job');if(!select)return;
@@ -105,7 +130,7 @@ function renderCandidates(){
  }
  text('evidence-page-status',S.features.length+' of '+(S.summary?.total??0)+' candidates loaded. Full export requires all pages.');
  if($('evidence-next'))$('evidence-next').hidden=S.next===null;
- const ready=S.next===null;
+ const ready=S.loaded&&S.next===null;
  if($('evidence-report'))$('evidence-report').disabled=!ready;
  if($('evidence-geojson'))$('evidence-geojson').disabled=!ready;
 }
@@ -138,19 +163,24 @@ async function openJob(id,key){
  if(!S.key){say('Enter administrator key to open the protected analysis.',true);return;}
  if(!/^[0-9a-f-]{36}$/i.test(String(id))){say('Choose a completed job from the list.',true);return;}
  const seq=++S.sequence;
- S.job={id};S.features=[];S.next=null;S.summary=null;S.selected=null;
- if($('ev-submit'))$('ev-submit').disabled=true;
+ resetEvidence('Loading the selected analysis record…');
+ S.job={id};
  say('Opening exact scene provenance and candidate records…');
  try{
   const result=await api('/api/evidence?job_id='+encodeURIComponent(id)+'&offset=0');
   if(seq!==S.sequence)return;
   S.job=result.job;S.summary=result.summary;S.features=result.featureCollection?.features||[];
   S.next=result.pagination?.next_offset??null;
+  S.loaded=true;
   if($('evidence-job'))$('evidence-job').value=id;
   renderSummary();renderCandidates();renderMap();
   say('Loaded '+S.features.length+' of '+(S.summary.total||0)+' candidates for job '+id.slice(0,8)+
    (S.job.scene_before?' with traceable scene provenance.':' (legacy run: source scene provenance unavailable).'));
- }catch(err){say(err.message,true);renderCandidates();}
+ }catch(err){
+  if(seq!==S.sequence)return;
+  resetEvidence('Unable to load this analysis. No result polygons are displayed.');
+  say(err.message,true);
+ }
 }
 async function more(){
  if(!S.job||S.next===null||S.busy)return;S.busy=true;
@@ -159,7 +189,7 @@ async function more(){
  finally{S.busy=false;if(button)button.disabled=false;}
 }
 async function review(){
- if(!S.job||!S.selected){say('Select an unverified candidate before reviewing.',true);return;}
+ if(!S.loaded||!S.job||!S.selected){say('Open a completed analysis and select an unverified candidate before reviewing.',true);return;}
  if(S.selected.properties?.review_status!=='unverified'){say('This candidate has already been reviewed. Existing decisions are immutable.',true);return;}
  const reviewer=$('ev-reviewer')?.value.trim()||'',notes=$('ev-notes')?.value.trim()||'',status=$('ev-decision')?.value;
  if(reviewer.length<3||notes.length<10||!['verified','rejected'].includes(status)){say('Enter a reviewer (3+ characters), independent rationale (10+ characters), and a valid decision.',true);return;}
@@ -180,7 +210,7 @@ function saveFile(name,payload,type){
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function download(kind){
- if(!S.job||S.next!==null){say('Load every page before exporting the complete evidence record.',true);return;}
+ if(!S.loaded||!S.job||S.next!==null){say('Open a completed analysis and load every page before exporting.',true);return;}
  const metadata={job:S.job,summary:S.summary,exported_at:new Date().toISOString(),
   caution:'Unvalidated land-cover-change candidates are not independently confirmed settlements. Review evidence must be independently assessed.'};
  const prefix='RSCDS_'+S.job.id.slice(0,8);
@@ -197,7 +227,7 @@ function download(kind){
  say('Private '+(kind==='geojson'?'GeoJSON':'evidence manifest')+' prepared locally. Protect the downloaded file.');
 }
 function photos(){
- const j=S.job;if(!j?.scene_before||!j?.scene_after){say('The worker scene IDs are missing for this job. Do not guess imagery from search results.',true);return;}
+ const j=S.loaded?S.job:null;if(!j?.scene_before||!j?.scene_after){say('The worker scene IDs are missing for this job. Do not guess imagery from search results.',true);return;}
  const controller=window.RSCDSImageryCompare;
  if(!controller){say('The imagery comparison module has not loaded.',true);return;}
  const bbox=j.bbox;if(Array.isArray(bbox)&&bbox.length===4&&$('bbox'))$('bbox').value=bbox.join(',');

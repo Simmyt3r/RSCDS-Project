@@ -5,14 +5,32 @@ const $=id=>document.getElementById(id);
 const S={before:null,after:null,metaBefore:null,metaAfter:null,map:null,beforeLayer:null,afterLayer:null,polygons:null,bounds:null,request:0,failures:0,loads:0,linkedEvidence:null};
 function feedback(message,level='info'){const el=$('compare-feedback');if(el){el.textContent=message;el.dataset.status=level;}}
 function date(scene){return String(scene?.date||'Unknown acquisition').slice(0,10);}
+function clearDisplayedImages(){
+ // Never leave a previous acquisition visible under a newly selected date.
+ ++S.request;
+ for(const name of ['beforeLayer','afterLayer','polygons']){
+  if(S.map&&S[name]){try{S.map.removeLayer(S[name]);}catch{}}
+  S[name]=null;
+ }
+ S.metaBefore=null;S.metaAfter=null;S.linkedEvidence=null;S.bounds=null;
+ const slider=$('compare-swipe');if(slider)slider.disabled=true;
+ for(const kind of ['before','after']){
+  const slot=$(kind+'-quicklook');
+  if(slot)slot.textContent='Select and render both acquisitions to view their actual imagery.';
+ }
+}
 function select(kind,scene){
- if(!['before','after'].includes(kind)||!scene?.id)return;
- S[kind]=scene;
+ if(!['before','after'].includes(kind))return;
+ clearDisplayedImages();
+ S[kind]=scene?.id?scene:null;
  const title=$('compare-'+kind+'-label'),sub=$('compare-'+kind+'-detail');
- if(title)title.textContent=date(scene);
- if(sub)sub.textContent=scene.id+(scene.cloudCover==null?' · acquisition-specific cloud fraction unrecorded':' · '+Number(scene.cloudCover).toFixed(1)+'% scene-wide clouds');
- if(kind==='before')S.metaBefore=null;else S.metaAfter=null;
- feedback('Image selected. Render the pair to update the comparison map.');
+ if(title)title.textContent=scene?date(scene):'No scene found';
+ if(sub)sub.textContent=scene?.id?
+  scene.id+(scene.cloudCover==null?' · cloud percentage not recorded':' · '+Number(scene.cloudCover).toFixed(1)+'% scene-wide clouds'):
+  'Try different dates to find a matching satellite acquisition.';
+ feedback(S.before&&S.after?
+  'Selection changed. Render both photographs to view the current pair.':
+  'Select one acquisition in each date window before rendering.');
 }
 function best(list){
  return (list||[]).filter(x=>x?.id&&(x.assets||[]).includes('visual')).sort((a,b)=>Number(a.cloudCover??100)-Number(b.cloudCover??100))[0]
@@ -20,8 +38,8 @@ function best(list){
 }
 function setSearchResults(before,after){
  const a=best(before),b=best(after);
- if(a)select('before',a);
- if(b)select('after',b);
+ select('before',a);
+ select('after',b);
  if(a&&b)feedback('Two real acquisitions selected using lowest scene-wide cloud percentage. You may choose other scenes above.');
 }
 function clearLayer(name){
@@ -105,8 +123,8 @@ async function render(){
   S.beforeLayer=L.tileLayer(before.tileTemplate,{...options,pane:'before-photo'});
   S.afterLayer=L.tileLayer(after.tileTemplate,{...options,pane:'after-photo'});
   for(const layer of [S.beforeLayer,S.afterLayer]){
-   layer.on('tileload',()=>S.loads++);
-   layer.on('tileerror',tileError);
+   layer.on('tileload',()=>{if(sequence===S.request)S.loads++;});
+   layer.on('tileerror',()=>{if(sequence===S.request)tileError();});
    layer.addTo(S.map);
   }
   const slider=$('compare-swipe');if(slider){slider.disabled=false;setSwipe(slider.value);}
