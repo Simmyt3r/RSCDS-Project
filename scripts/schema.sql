@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS rscds.detections (
  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE rscds.detections ADD COLUMN IF NOT EXISTS feature_hash CHAR(64);
-CREATE UNIQUE INDEX IF NOT EXISTS rscds_feature_hash_idx ON rscds.detections(feature_hash);
 CREATE INDEX IF NOT EXISTS rscds_geom_idx ON rscds.detections USING GIST(geom);
 CREATE INDEX IF NOT EXISTS rscds_review_idx ON rscds.detections(review_status,created_at DESC);
 CREATE TABLE IF NOT EXISTS rscds.study_areas (
@@ -58,3 +57,10 @@ ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS processor_method TEXT;
 CREATE INDEX IF NOT EXISTS rscds_job_queue_idx ON rscds.analysis_jobs(status,created_at);
 ALTER TABLE rscds.detections ADD COLUMN IF NOT EXISTS job_id UUID REFERENCES rscds.analysis_jobs(id);
 CREATE INDEX IF NOT EXISTS rscds_detection_job_idx ON rscds.detections(job_id);
+-- A candidate may recur in different independent analyses; preserve those records.
+CREATE UNIQUE INDEX IF NOT EXISTS rscds_job_feature_hash_idx
+ ON rscds.detections(job_id,feature_hash) WHERE job_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS rscds_manual_feature_hash_idx
+ ON rscds.detections(feature_hash) WHERE job_id IS NULL;
+-- Replace the old global uniqueness rule without deleting any candidate rows.
+DROP INDEX IF EXISTS rscds.rscds_feature_hash_idx;

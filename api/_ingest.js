@@ -11,10 +11,10 @@ export async function insertFeatures(tx,features,jobId=null){
     const rows=await tx`INSERT INTO rscds.detections (site_label,geom,area_m2,score,source,scene_before,scene_after,feature_hash,job_id)
      SELECT ${String(p.site_label||'Candidate').slice(0,120)}, ST_SetSRID(ST_GeomFromGeoJSON(${f.geometry}),4326), ${p.area_m2}, ${p.score}, ${p.source}, ${String(p.scene_before||'').slice(0,255)}, ${String(p.scene_after||'').slice(0,255)}, ${f.hash}, ${jobId}
      WHERE ST_IsValid(ST_SetSRID(ST_GeomFromGeoJSON(${f.geometry}),4326))
-     ON CONFLICT (feature_hash) DO NOTHING RETURNING id`;
+     ON CONFLICT DO NOTHING RETURNING id`;
     if(rows.length)imported++;
     else {
-      const exists=await tx`SELECT 1 FROM rscds.detections WHERE feature_hash=${f.hash} LIMIT 1`;
+      const exists=await tx`SELECT 1 FROM rscds.detections WHERE feature_hash=${f.hash} AND job_id IS NOT DISTINCT FROM ${jobId}::uuid LIMIT 1`;
       if(!exists.length)throw Error('Feature geometry was invalid');
     }
   }

@@ -114,3 +114,11 @@ The administrator-only API `/api/evidence?job_id=UUID&offset=0` returns one comp
 ## Linked visual evidence workspace (v0.5.0)
 
 Open any completed run from the private analysis queue via **Open visual evidence**. The dedicated workspace uses administrator-only paginated evidence records, shows exact worker-selected source scenes, review counts and valid-pixel overlap, maps candidate polygons on a **local coordinate grid** (no public basemap requests), provides independent reviewer notes and status controls, and supports private export of provenance manifests and GeoJSON. A completed job without provenance is explicitly marked incomplete. Images are only sent to an external tile renderer after an explicit user action in the separate photo viewer. The application does not claim that an unvalidated spectral heuristic proves settlements.
+
+## v0.5.1 reliability and data integrity
+
+This is a quality release, not a feature expansion. Duplicate fingerprints are now scoped to each analysis job (or to manual imports), preserving repeat observations of the same candidate in independent runs. The old globally unique fingerprint index is safely replaced with separate partial unique indexes; the migration does **not** delete existing detections or review decisions.
+
+Expired worker leases are reacquired within a database transaction, and any partial batches from an interrupted attempt are removed **only for the failed in-progress attempt** before reprocessing. Incoming batches lock the job's lease row before writing, so an outdated worker cannot race an expired lease recovery. Worker completion and failure also verify lease expiry. Observation-period validation now rejects impossible calendar dates rather than accepting JavaScript's rollover parsing.
+
+Apply the idempotent `scripts/schema.sql` index statements to Aiven before deploying this version. The live rollout must follow the deployment limit policy; GitHub source and CI are not proof that production has updated.

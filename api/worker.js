@@ -15,26 +15,43 @@ export default async function handler(req,res){
     if(body?.action==='lease'){
       // Recover worker crashes after expiry, with bounded attempts.
       await sql`UPDATE rscds.analysis_jobs SET status='failed',error_message='Worker did not finish after three attempts',finished_at=NOW(),lease_token=NULL WHERE status='running' AND lease_expires<NOW() AND attempts>=3`;
-      const rows=await sql`WITH available AS (
-        SELECT id FROM rscds.analysis_jobs
-        WHERE status='queued' OR (status='running' AND lease_expires<NOW() AND attempts<3)
-        ORDER BY created_at ASC FOR UPDATE SKIP LOCKED LIMIT 1
-      ) UPDATE rscds.analysis_jobs j SET status='running',attempts=j.attempts+1,lease_token=gen_random_uuid(),lease_expires=NOW()+INTERVAL '60 minutes',started_at=NOW(),error_message=NULL
-      FROM available a WHERE j.id=a.id RETURNING j.id,j.bbox,j.before_window,j.after_window,j.cloud_max,j.min_pixels,j.lease_token`;
+      const rows=await sql.begin(async tx=>{
+        const available=await tx`SELECT id,status FROM rscds.analysis_jobs
+          WHERE status='queued' OR (status='running' AND lease_expires<NOW() AND attempts<3)
+          ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED`;
+        if(!available.length)return [];
+        const job=available[0];
+        if(job.status==='running'){
+          // Recover atomically: stale partial batches must not contaminate a retry.
+          await tx`DELETE FROM rscds.detections WHERE job_id=${job.id}`;
+        }
+        return tx`UPDATE rscds.analysis_jobs
+          SET status='running',attempts=attempts+1,lease_token=gen_random_uuid(),
+            lease_expires=NOW()+INTERVAL '60 minutes',started_at=NOW(),finished_at=NULL,
+            error_message=NULL,result_count=0,scene_before=NULL,scene_after=NULL,
+            acquired_before=NULL,acquired_after=NULL,valid_fraction=NULL,processor_method=NULL
+          WHERE id=${job.id}
+          RETURNING id,bbox,before_window,after_window,cloud_max,min_pixels,lease_token`;
+      });
       return send(res,200,{job:rows[0]||null});
     }
     if(!validUUID(body?.id)||!validUUID(body?.lease_token))throw Error('Invalid job lease');
     if(!['batch','complete','fail'].includes(body.action))throw Error('Unknown worker action');
-    const active=await sql`SELECT id FROM rscds.analysis_jobs WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' AND lease_expires>NOW()`;
-    if(!active.length)return send(res,409,{error:'Job lease is no longer active'});
     if(body.action==='batch'){
       if(body.features?.type!=='FeatureCollection')throw Error('FeatureCollection required');
-      const result=await sql.begin(async tx=>insertFeatures(tx,body.features.features,body.id));
-      return send(res,200,result);
+      const result=await sql.begin(async tx=>{
+        // Lock the same job row used by retry/lease before storing a batch.
+        const active=await tx`SELECT id FROM rscds.analysis_jobs
+          WHERE id=${body.id} AND lease_token=${body.lease_token}
+            AND status='running' AND lease_expires>NOW() FOR UPDATE`;
+        if(!active.length)return null;
+        return insertFeatures(tx,body.features.features,body.id);
+      });
+      return send(res,result?200:409,result||{error:'Job lease is no longer active'});
     }
     if(body.action==='fail'){
       const msg=safeFailureMessage(body.message);
-      const rows=await sql`UPDATE rscds.analysis_jobs SET status='failed',error_message=${msg},lease_token=NULL,lease_expires=NULL,finished_at=NOW() WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' RETURNING id,status`;
+      const rows=await sql`UPDATE rscds.analysis_jobs SET status='failed',error_message=${msg},lease_token=NULL,lease_expires=NULL,finished_at=NOW() WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' AND lease_expires>NOW() RETURNING id,status`;
       return send(res,rows.length?200:409,rows[0]||{error:'Lease expired'});
     }
     const p=validatedProvenance(body.provenance);
@@ -43,7 +60,7 @@ export default async function handler(req,res){
       scene_before=${p.before},scene_after=${p.after},acquired_before=${p.early},acquired_after=${p.late},
       valid_fraction=${p.fraction},processor_method=${p.method},
       lease_token=NULL,lease_expires=NULL,finished_at=NOW()
-      WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' RETURNING id,status,result_count`;
+      WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' AND lease_expires>NOW() RETURNING id,status,result_count`;
     return send(res,rows.length?200:409,rows[0]||{error:'Lease expired'});
   }catch(e){return send(res,400,{error:String(e.message||e)});}finally{if(sql)await sql.end();}
 }

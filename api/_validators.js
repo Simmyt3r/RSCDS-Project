@@ -7,9 +7,15 @@ export function parseBBox(v){
  return bbox;
 }
 export function validPeriod(v){
- if(typeof v!=='string'|| !/^\d{4}-\d\d-\d\d\/\d{4}-\d\d-\d\d$/.test(v))throw Error('Use YYYY-MM-DD/YYYY-MM-DD');
- let [a,b]=v.split('/');
- if(!Number.isFinite(Date.parse(a))||!Number.isFinite(Date.parse(b))||a>b)throw Error('Invalid observation dates');
+ if(typeof v!=='string'|| !/^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/.test(v))
+  throw Error('Use YYYY-MM-DD/YYYY-MM-DD');
+ const validDate=value=>{
+  const [year,month,day]=value.split('-').map(Number);
+  if(year<1900||year>2200||month<1||month>12||day<1||day>31)return false;
+  return new Date(Date.UTC(year,month-1,day)).toISOString().slice(0,10)===value;
+ };
+ const [before,after]=v.split('/');
+ if(!validDate(before)||!validDate(after)||before>after)throw Error('Invalid observation dates');
  return v;
 }
 export function validateGeometry(geom) {
