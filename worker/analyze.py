@@ -52,12 +52,18 @@ def choose_scene(client,bbox,period,cloud_max):
     return candidates[0][1]
 
 def target_grid(bbox):
-    # EPSG:3857 area is an approximation, reasonably close for equatorial test AOIs.
-    # Production work should use the locally appropriate UTM CRS and area calculations.
+    # Research processing uses a 10 m projected grid in EPSG:3857.
+    # Do not silently turn 10 m satellite observations into ~50 m pixels
+    # when a caller requests the former 0.5-degree maximum study area.
+    # For more precise area estimates, locally appropriate UTM is preferred.
     tr=Transformer.from_crs('EPSG:4326','EPSG:3857',always_xy=True)
     w,s=tr.transform(bbox[0],bbox[1]);e,n=tr.transform(bbox[2],bbox[3])
-    width=min(1024,max(32,math.ceil((e-w)/10)))
-    height=min(1024,max(32,math.ceil((n-s)/10)))
+    native_width=math.ceil((e-w)/10)
+    native_height=math.ceil((n-s)/10)
+    if native_width>1024 or native_height>1024:
+        raise ValueError('Study area exceeds the 1024x1024 grid at 10 m; choose a smaller bounding box to preserve spatial detail')
+    width=max(32,native_width)
+    height=max(32,native_height)
     return from_bounds(w,s,e,n,width,height),width,height
 
 def read_scene(item,grid):

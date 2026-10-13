@@ -13,14 +13,23 @@ export default async function handler(req,res){
      to_regclass('rscds.analysis_jobs') IS NOT NULL AS has_jobs,
      EXISTS(SELECT 1 FROM information_schema.columns
        WHERE table_schema='rscds' AND table_name='detections' AND column_name='job_id') AS has_job_link,
-     EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='rscds' AND table_name='analysis_jobs' AND column_name='scene_before') AS has_evidence_link`;
+     EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='rscds' AND table_name='analysis_jobs' AND column_name='scene_before') AS has_evidence_link,
+     EXISTS (SELECT 1 FROM pg_catalog.pg_attribute
+       WHERE attrelid=to_regclass('rscds.analysis_jobs') AND attname='scene_before'
+         AND attnum>0 AND NOT attisdropped) AS has_evidence_catalog,
+     current_database()='defaultdb' AS uses_expected_database`;
    databaseChecks={
      detections:Boolean(row?.has_detections),
      jobs:Boolean(row?.has_jobs),
      jobReference:Boolean(row?.has_job_link),
-     sceneProvenance:Boolean(row?.has_evidence_link)
+     sceneProvenance:Boolean(row?.has_evidence_link),
+     provenanceColumnExists:Boolean(row?.has_evidence_catalog),
+     expectedDatabase:Boolean(row?.uses_expected_database)
    };
-   db=Object.values(databaseChecks).every(Boolean)?'ready':'migration required';
+   if(!databaseChecks.expectedDatabase)db='database target mismatch';
+   else if(!databaseChecks.provenanceColumnExists)db='migration required';
+   else if(!databaseChecks.sceneProvenance)db='database permissions required';
+   else db=databaseChecks.detections&&databaseChecks.jobs&&databaseChecks.jobReference?'ready':'migration required';
   }catch{db='connection error';}
   finally{if(sql)await sql.end();}
  }
