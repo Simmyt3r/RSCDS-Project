@@ -128,7 +128,7 @@ async function queueAnalysis(){
   toast('Private analysis queued');await getJobs();
  }catch(e){$('job-notice').textContent=e.message;toast(e.message);}finally{button.disabled=false;}
 }
-async function health(){try{const h=await request('/api/health');const ready=h.database==='ready';$('systemstate').textContent='Website online';document.querySelector('.state-dot').classList.add('ok');$('db-pill').textContent='DB: '+h.database;$('db-pill').className='pill '+(ready?'ok':'');$('stat-db').textContent=ready?'Connected':h.database;$('setup-db').textContent=ready?'Ready':h.database;$('setup-auth').textContent=h.adminConfigured?'Configured':'Missing';}catch(e){$('systemstate').textContent='Check service';$('db-pill').textContent='Unavailable';}}
+async function health(){try{const h=await request('/api/health');const ready=h.database==='ready';$('systemstate').textContent=ready?'System operational':'Database needs attention';document.querySelector('.state-dot').classList.toggle('ok',ready);$('db-pill').textContent='DB: '+h.database;$('db-pill').className='pill '+(ready?'ok':'');$('stat-db').textContent=ready?'Connected':h.database;$('setup-db').textContent=ready?'Ready':h.database;$('setup-auth').textContent=h.adminConfigured?'Configured':'Missing';}catch(e){$('systemstate').textContent='Check service';$('db-pill').textContent='Unavailable';}}
 // Bind buttons before optional map initialization. Failed tiles must never disable controls.
 function initializeDashboard(){
  const click=(id,handler)=>{const element=$(id);if(element)element.addEventListener('click',handler);};

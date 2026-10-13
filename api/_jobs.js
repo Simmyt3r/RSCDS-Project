@@ -2,11 +2,22 @@ import crypto from 'node:crypto';
 import {parseBBox,validPeriod} from './_validators.js';
 
 export const JOB_SCHEMA='rscds';
+export function projectedGridPixels(bbox){
+ const [west,south,east,north]=bbox;
+ const R=6378137,rad=Math.PI/180;
+ const y=lat=>R*Math.log(Math.tan(Math.PI/4+lat*rad/2));
+ return {
+  width:Math.ceil((east-west)*rad*R/10),
+  height:Math.ceil((y(north)-y(south))/10)
+ };
+}
 export function validateJobRequest(input){
   if(!input || typeof input!=='object' || Array.isArray(input))throw Error('Provide the study area and two date windows');
   const bbox=parseBBox(input.bbox);
   // Current worker caps the output grid at 1024 pixels. Keep near native 10 m resolution.
   if(bbox[2]-bbox[0]>.09 || bbox[3]-bbox[1]>.09)throw Error('Analysis AOI must be at most 0.09° wide and tall; divide larger areas into smaller studies');
+  const {width,height}=projectedGridPixels(bbox);
+  if(width>1024||height>1024)throw Error('Study area exceeds 1024 pixels at 10 m resolution; choose a smaller analysis area');
   const before=validPeriod(input.before),after=validPeriod(input.after);
   if(before.split('/')[1]>=after.split('/')[0])throw Error('Before must end before the after observation begins');
   const cloudMax=input.cloud_max===undefined?35:Number(input.cloud_max);

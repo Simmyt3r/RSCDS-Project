@@ -13,6 +13,13 @@ export default async function handler(req,res){
     const body=typeof req.body==='string'?JSON.parse(req.body):req.body;
     sql=getDB();
     if(body?.action==='lease'){
+      // Never lease work against an out-of-date database instance.
+      const [schema]=await sql`SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute
+        WHERE attrelid=to_regclass('rscds.analysis_jobs') AND attname='scene_before'
+        AND attnum>0 AND NOT attisdropped) AS evidence_ready`;
+      if(!schema?.evidence_ready)return send(res,503,{
+        error:'Connected database does not have required analysis provenance columns.'
+      });
       // Recover worker crashes after expiry, with bounded attempts.
       await sql`UPDATE rscds.analysis_jobs SET status='failed',error_message='Worker did not finish after three attempts',finished_at=NOW(),lease_token=NULL WHERE status='running' AND lease_expires<NOW() AND attempts>=3`;
       const rows=await sql.begin(async tx=>{

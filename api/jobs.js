@@ -7,6 +7,13 @@ export default async function handler(req,res){
   let sql;
   try {
     sql=getDB();
+    const [schema]=await sql`SELECT
+      EXISTS (SELECT 1 FROM pg_catalog.pg_attribute
+        WHERE attrelid=to_regclass('rscds.analysis_jobs') AND attname='scene_before'
+        AND attnum>0 AND NOT attisdropped) AS evidence_ready`;
+    if(!schema?.evidence_ready)return send(res,503,{
+      error:'Connected database lacks the RSCDS evidence migration; verify DATABASE_URL before processing analyses.'
+    });
     if(req.method==='GET'){
       const rows=await sql`SELECT id,bbox,before_window,after_window,cloud_max,min_pixels,status,attempts,result_count,error_message,scene_before,scene_after,acquired_before,acquired_after,valid_fraction,processor_method,created_at,started_at,finished_at FROM rscds.analysis_jobs ORDER BY created_at DESC LIMIT 50`;
       const counts=await sql`SELECT status,COUNT(*)::int AS count FROM rscds.analysis_jobs GROUP BY status`;
