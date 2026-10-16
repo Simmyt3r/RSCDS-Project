@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {MIGRATIONS,checksum,stateFor,validateApply,perform} from '../api/_migrations.js';
+import {MIGRATIONS,checksum,stateFor,validateApply,publicBootstrapState,perform} from '../api/_migrations.js';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const pending=MIGRATIONS.map(x=>x.id);
 test('versioned migrations cover the canonical schema without arbitrary client SQL',()=>{
@@ -23,7 +23,7 @@ test('dry-run summary catches checksum drift and is read-only',()=>{
  assert.equal(a[1].status,'pending');
  assert.equal(stateFor([{id:pending[0],checksum:'bad'}])[0].status,'checksum_mismatch');
 });
-test('admin consent and exact pending-version snapshot are required',()=>{
+test('explicit consent and exact pending-version snapshot are required',()=>{
  const request={action:'apply',confirmation:'APPLY_RSCDS_MIGRATIONS',expectedPending:pending};
  assert.doesNotThrow(()=>validateApply(request,pending));
  for(const body of [null,{}, {...request,sql:'DROP TABLE rscds.detections',
@@ -58,14 +58,41 @@ test('migrations never execute DDL after stale snapshot or busy lock',async()=>{
   assert.equal(m.statements.length,0);
  }
 });
-test('setup UI requires admin key, version confirmation and does not store credentials',()=>{
+test('one-time setup requires no login and does not persist credentials',()=>{
  const ui=read('public/migrations.js'),endpoint=read('api/migrations.js'),html=read('public/index.html');
- assert.match(endpoint,/requireAdmin\(req,res\)/);
+ assert.doesNotMatch(endpoint,/requireAdmin\(req,res\)/);
  assert.match(endpoint,/req\.headers\.origin/);
  assert.doesNotMatch(endpoint,/body\.sql|req\.query\.sql|eval\(/);
- assert.match(ui,/Authorization:'Bearer '/);
+ assert.doesNotMatch(ui,/Authorization:'Bearer '|migration-key/);
  assert.match(ui,/migration-consent/);
  assert.doesNotMatch(ui,/localStorage|sessionStorage|document\.cookie/);
- for(const id of ['migration-check','migration-key','migration-apply','migration-consent'])
+ for(const id of ['migration-check','migration-apply','migration-consent'])
   assert.ok(html.includes('id="'+id+'"'));
+});
+
+test('bootstrap opens only for original hard-coded versions and closes after setup',()=>{
+ const initial=publicBootstrapState(stateFor([]));
+ assert.equal(initial.available,true);
+ const installed=MIGRATIONS.map(m=>({id:m.id,checksum:checksum(m)}));
+ const done=publicBootstrapState(stateFor(installed));
+ assert.equal(done.closed,true);
+ assert.equal(done.available,false);
+ const drift=publicBootstrapState(stateFor([{id:'001_core',checksum:'mismatched'}]));
+ assert.equal(drift.available,false);
+});
+test('completed bootstrap rejects repeat unauthenticated migrations before DDL',async()=>{
+ const installed=MIGRATIONS.map(m=>({id:m.id,checksum:checksum(m)}));
+ const mock=mockDatabase({current:installed});
+ await assert.rejects(()=>perform(mock.db,{
+  action:'apply',confirmation:'APPLY_RSCDS_MIGRATIONS',expectedPending:[]
+ }),/Initial database setup is complete/);
+ assert.equal(mock.statements.length,0);
+});
+test('public migration endpoint discloses no database URI or credentials',()=>{
+ const endpoint=read('api/migrations.js');
+ assert.match(endpoint,/database:'connected'/);
+ assert.match(endpoint,/bootstrapClosed/);
+ assert.doesNotMatch(endpoint,/requireAdmin\(req,res\)|process\.env\.ADMIN_API_KEY/);
+ assert.match(endpoint,/req\.headers\.origin/);
+ assert.match(endpoint,/application\/json/);
 });

@@ -153,3 +153,7 @@ Concurrent analysis submissions now serialize the capacity check with insertion;
 - [Independent validation protocol](docs/research/VALIDATION_PROTOCOL.md)
 
 **Gate is conditional:** unit tests and a built deployment do not establish live database readiness, an end-to-end real satellite analysis or scientific validity. Promotion requires verifying the correct Aiven instance and applying migrations explicitly in RSCDS.
+
+## v0.6.1 — No-login database bootstrap
+
+In **Deploy & configure → Initialize database without login**, click **Check migrations**, confirm the intended Aiven database via Vercel's protected environment configuration, authorize the listed initial versions, and click **Apply pending migrations**. No administrator key is needed. The server runs only the three fixed, idempotent initial migrations; uses one transactional advisory lock and checksums; and disables anonymous writes after initial setup. The endpoint is not a public SQL editor. **Security trade-off:** while setup is pending, any visitor can cause the fixed migrations to run, so do not expose an unconfigured instance containing sensitive data. Admin and worker credentials remain mandatory for private analysis and review.
