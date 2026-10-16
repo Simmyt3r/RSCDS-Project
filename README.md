@@ -144,3 +144,12 @@ The queue validates the actual **Web Mercator 10 m pixel dimensions** before adm
 An administrator may open **Deploy & configure → Apply database migrations securely**, supply the `ADMIN_API_KEY` in that browser tab, review the target database and the fixed migration list, explicitly confirm, and apply inside one PostgreSQL transaction protected by a transaction-scoped advisory lock. The endpoint accepts no SQL, object names, URLs, or file paths from callers. Each migration is recorded with a checksum and application timestamp in `rscds.schema_migrations`. Applied statements are skipped, and drift, stale snapshots or concurrent migrations are rejected. The feature runs only against the database configured by `DATABASE_URL` for that deployment; checking the intended Aiven instance before approval remains essential. An HTTP 200 build does not imply the correct database has been migrated.
 
 Concurrent analysis submissions now serialize the capacity check with insertion; worker completion checks that **every stored candidate matches the exact source scene pair returned by the worker**, under the same row lock as batch insertion. Incorrect provenance prevents completion. These are engineering integrity tests, not independent settlement-classification validation.
+
+## v0.6.0 defence and release documentation
+
+- [Final QA/QC and release gate](docs/software/RELEASE_QA_QC_v0_6.md)
+- [In-app migration operations manual](docs/software/ADMIN_MIGRATIONS_OPERATIONS.md)
+- [Research defence brief, demonstration and panel Q&A](docs/research/RSCDS_DEFENCE_BRIEF.md)
+- [Independent validation protocol](docs/research/VALIDATION_PROTOCOL.md)
+
+**Gate is conditional:** unit tests and a built deployment do not establish live database readiness, an end-to-end real satellite analysis or scientific validity. Promotion requires verifying the correct Aiven instance and applying migrations explicitly in RSCDS.
