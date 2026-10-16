@@ -40,7 +40,7 @@ Thresholds and formulas should be tied directly to `worker/detector.py`; do not 
 
 ## Demonstration procedure: live and fallback
 - Show `/api/health` reporting a connected database, distinct configured secrets and `ready`; do not expose the underlying keys or URI.
-- In **Deploy & configure**, show pending/applied migrations using the administrator key. Mask the credential input in screenshots.
+- In **Deploy & configure**, show the no-login initial migration status and explain the one-time allowlist, confirmation and automatic closure of public writes. Never show private database connection settings.
 - Open Satellite imagery, use the non-sensitive example area, search before and after periods, and inspect genuine STAC scene records.
 - Render true-colour images using the external preview service if available. If the third-party tile service is down, show source quicklooks and clearly explain the fallback.
 - Open a **real completed** job and display its exact acquisition IDs and candidate register; do not show a fabricated job.
@@ -68,7 +68,7 @@ Thresholds and formulas should be tied directly to `worker/detector.py`; do not 
 
 **Q10. What happens when external services fail?** STAC failures produce an error; map fallback provides a coordinate grid; photo previews may remain available when public raster tiles fail. No fake imagery is synthesized.
 
-**Q11. How is the database secure?** Bearer keys are checked server side, admin and worker have separate keys, user-provided SQL is never executed, migrations are fixed/checksummed and private geometries require authorization. Stronger per-user identity and production rate limiting remain future controls.
+**Q11. How is the database secure?** Private analysis and worker APIs still use distinct bearer keys. Initial database setup deliberately requires no login, but is limited to a one-time allowlist of fixed/checksummed, additive migrations and closes after completion. During setup, anyone can initiate those fixed changes; explain this trade-off rather than claiming it is authenticated. Private geometries still require authorization. Stronger identity and rate limiting remain future controls.
 
 **Q12. Why is a completed GitHub workflow not proof of successful detection?** The workflow may poll an empty queue. Real completion is shown by a completed database job, actual source scenes and candidate result/provenance record.
 

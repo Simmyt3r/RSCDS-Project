@@ -16,7 +16,7 @@
 | CI | JS tests, Python tests and preflight pass on release SHA | GitHub Actions run URL and exact commit |
 | App assets | All sidebar anchors work; map error cannot disable search | Manual desktop + mobile browser tests |
 | Database identity | Verified intended Aiven host, database, permissions | Operator checks secure Vercel & Aiven consoles; do not screenshot secrets |
-| Migration | Authenticated GET and explicit POST; same target; repeat is no-op | Browser demonstration + `rscds.schema_migrations` status |
+| Migration | No-login initial bootstrap; fixed schema versions, consent, closure after completion; no arbitrary SQL | Browser demonstration + `rscds.schema_migrations` status |
 | Authentication | Anonymous and wrong-key requests blocked | Protected endpoints return 401 or 503 when unconfigured |
 | SQL injection | No submitted SQL or identifiers; static migrations only | `tests/migrations_security.test.js` |
 | Migration concurrency | Transaction/advisory lock, checksum mismatch refusal | Test and database-backed contention rehearsal |
@@ -34,8 +34,8 @@
 
 ## Admin migration QA procedure
 1. Deploy the candidate commit to a nonpublic preview environment backed by an intended, restorable test database.
-2. Confirm administrator access is protected. Opening `/api/migrations` anonymously must not reveal migration versions or database state.
-3. Enter administrator key in **Deploy & configure**; select **Check migrations** and inspect the connected database name and list.
+2. Confirm the no-login initial setup endpoint is limited to the fixed approved versions. Only version status and non-sensitive information may be shown anonymously. All analysis, evidence and review APIs must still require authentication.
+3. In **Deploy & configure**, select **Check migrations** without a key. Inspect the approved list, then verify the actual connected database service in the private Vercel settings.
 4. Verify the correct database endpoint and service using provider consoles, not just a matching database name.
 5. Tick the authorization box and **Apply pending migrations**. Confirm that only `rscds` tables/indexes and the PostGIS extension are created/altered.
 6. Refresh. All versions must report `applied`. Repeat with a newly fetched empty pending list; nothing should change.
