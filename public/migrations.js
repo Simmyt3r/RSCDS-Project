@@ -1,49 +1,60 @@
-/* Administrator-only migration panel; credentials never persisted. */
+/* One-time initial RSCDS database setup, with no account or API key. */
 (function(){
  const $=id=>document.getElementById(id);
  let pending=null,busy=false;
- function notice(value,err=false){const el=$('migration-feedback');el.textContent=value;el.dataset.status=err?'error':'info';}
+ function notice(value,err=false){
+  const el=$('migration-feedback');
+  if(el){el.textContent=value;el.dataset.status=err?'error':'info';}
+ }
  function lock(){pending=null;$('migration-apply').disabled=true;}
  async function request(method,body){
-  const key=$('migration-key')?.value.trim();
-  if(!key)throw Error('Enter your administrator key.');
-  const response=await fetch('/api/migrations',{method,cache:'no-store',headers:{
-   Authorization:'Bearer '+key,Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})
-  },...(body?{body:JSON.stringify(body)}:{})});
+  const response=await fetch('/api/migrations',{method,cache:'no-store',
+   headers:{Accept:'application/json',...(body?{'Content-Type':'application/json'}:{})},
+   ...(body?{body:JSON.stringify(body)}:{})});
   const json=await response.json().catch(()=>({error:'Unexpected response'}));
-  if(!response.ok)throw Error(json.error||'Migration request failed.');
+  if(!response.ok)throw Error(json.error||'Initial migration request failed.');
   return json;
  }
  async function refresh(){
-  if(busy)return;busy=true;lock();$('migration-check').disabled=true;
-  notice('Inspecting approved migrations…');
+  if(busy)return;
+  busy=true;lock();$('migration-check').disabled=true;
+  notice('Checking approved initial database migrations…');
   try{
    const data=await request('GET');
-   $('migration-target').textContent='Connected database: '+data.database+
-    ' · schema: rscds. Confirm this is the intended service before applying.';
+   $('migration-target').textContent='Database connection: '+data.database+
+    ' · schema: rscds. Verify DATABASE_URL in Vercel points to your intended Aiven service.';
    const list=$('migration-versions');list.replaceChildren();
    for(const m of data.migrations){
-    const line=document.createElement('div');line.className='migration-line';
-    const title=document.createElement('strong');title.textContent=m.id+' · '+m.title;
-    const status=document.createElement('span');status.textContent=m.status;line.append(title,status);list.append(line);
+    const row=document.createElement('div');row.className='migration-line';
+    const name=document.createElement('strong');name.textContent=m.id+' · '+m.title;
+    const label=document.createElement('span');label.textContent=m.status;
+    row.append(name,label);list.append(row);
    }
-   if(data.migrations.some(m=>m.status==='checksum_mismatch'))throw Error('Recorded migration checksum differs from this release. Do not proceed.');
-   pending=data.pending||[];
-   $('migration-apply').disabled=!pending.length||!$('migration-consent').checked;
-   notice(pending.length?'Approved pending updates: '+pending.join(', '):'All recorded migrations are current.');
-  }catch(e){lock();notice(e.message,true);$('migration-target').textContent='Database target not verified.';}
-  finally{busy=false;$('migration-check').disabled=false;}
+   pending=data.bootstrapAvailable?data.pending:null;
+   $('migration-apply').disabled=!pending?.length||!$('migration-consent').checked;
+   notice(data.bootstrapClosed?
+     'Initial setup complete. Public migration writes are now permanently closed for these versions.':
+     data.bootstrapAvailable?'Ready to apply approved initial versions: '+pending.join(', '):
+     'These migrations require a controlled operator-led upgrade.',
+     !data.bootstrapClosed&&!data.bootstrapAvailable);
+  }catch(error){
+   lock();notice(error.message,true);
+   $('migration-target').textContent='Database target not verified.';
+  }finally{busy=false;$('migration-check').disabled=false;}
  }
  async function apply(){
   if(busy||!pending?.length||!$('migration-consent').checked)return;
-  busy=true;const expected=pending.slice();lock();$('migration-check').disabled=true;
-  notice('Applying fixed, versioned SQL transaction. Please wait.');
+  busy=true;const snapshot=pending.slice();lock();
+  $('migration-check').disabled=true;
+  notice('Applying only approved initial database migrations…');
   try{
-   const result=await request('POST',{action:'apply',confirmation:'APPLY_RSCDS_MIGRATIONS',expectedPending:expected});
+   const result=await request('POST',{
+    action:'apply',confirmation:'APPLY_RSCDS_MIGRATIONS',expectedPending:snapshot
+   });
    $('migration-consent').checked=false;
-   notice('Applied '+result.applied.length+' approved migration(s). Confirm the health check is ready.');
-  }catch(e){notice(e.message,true);}
-  finally{busy=false;$('migration-check').disabled=false;setTimeout(()=>void refresh(),0);}
+   notice('Applied '+result.applied.length+' initial migration versions. Checking status…');
+  }catch(error){notice(error.message,true);}
+  finally{busy=false;$('migration-check').disabled=false;void refresh();}
  }
  function start(){
   $('migration-check')?.addEventListener('click',()=>void refresh());
@@ -51,7 +62,7 @@
   $('migration-consent')?.addEventListener('change',()=>{
    $('migration-apply').disabled=!$('migration-consent').checked||!pending?.length||busy;
   });
-  $('migration-key')?.addEventListener('input',()=>{lock();$('migration-consent').checked=false;});
  }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+ else start();
 })();

@@ -17,7 +17,7 @@
    <a class="nav" data-tab="review" href="#review"><span aria-hidden="true">✓</span> Review workspace</a>
    <a class="nav" data-tab="setup" href="#setup"><span aria-hidden="true">⚙</span> Deploy & configure</a>
   </nav>
-  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.6.0<br>Private by default • Human-reviewed</p></div>
+  <div class="sidefoot"><div class="state"><span class="state-dot"></span><span id="systemstate">Checking system</span></div><p>Research prototype v0.6.1<br>Private by default • Human-reviewed</p></div>
  </aside>
  <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" hidden></div>
  <main class="main">
@@ -144,10 +144,10 @@
    <div class="setup-cards">
     <article class="panel setup-step"><div class="step-heading"><span class="step-number">01</span><div><h2>Import your GitHub repository into Vercel</h2><p>Go to Add New → Project, select <strong>Simmyt3r/RSCDS-Project</strong>, and import. Choose <b>Other</b> for Framework Preset, <b>./</b> for Root Directory, and <b>public</b> for Output Directory. The repository provides <code>npm run build</code> automatically in <code>vercel.json</code>.</p></div></div><div class="actions-row"><a class="secondary action-link" href="https://vercel.com/new" target="_blank" rel="noopener noreferrer">Open Vercel ↗</a><a class="linkbutton action-link" href="https://github.com/Simmyt3r/RSCDS-Project" target="_blank" rel="noopener noreferrer">View source ↗</a></div><label class="step-check"><input type="checkbox" data-setup-step="git"> Repository selected in Vercel</label></article>
     <article class="panel setup-step">
- <div class="step-heading"><span class="step-number">02</span><div><h2>Apply database migrations securely</h2>
- <p>Check and apply approved, versioned RSCDS/PostGIS changes to the database connected to this deployment. No raw SQL input or unrelated database changes.</p></div></div>
+ <div class="step-heading"><span class="step-number">02</span><div><h2>Initialize database without login</h2>
+ <p>Check and apply approved RSCDS/PostGIS changes without authentication. Confirm the connected Aiven database before continuing.</p></div></div>
  <div class="migration-control">
-  <label>Administrator key<input type="password" id="migration-key" autocomplete="off" placeholder="ADMIN_API_KEY, used only for this request"></label>
+  <p class="helper">No login or administrator key is needed for initial setup. The server can apply only its fixed, non-destructive migration versions and closes public writes after setup is complete.</p>
   <div class="actions-row"><button id="migration-check" class="secondary" type="button">Check migrations</button>
   <button id="migration-apply" class="primary" type="button" disabled>Apply pending migrations</button></div>
   <p class="helper" id="migration-target">Connected database not yet verified.</p>
