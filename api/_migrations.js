@@ -2,6 +2,16 @@ import crypto from 'node:crypto';
 /** Immutable server-side allowlist. No submitted SQL, table identifiers, or filenames. */
 export const MIGRATIONS=Object.freeze([{"id":"001_core","title":"PostGIS, RSCDS tables and base indexes","sql":["CREATE EXTENSION IF NOT EXISTS postgis","CREATE SCHEMA IF NOT EXISTS rscds","CREATE TABLE IF NOT EXISTS rscds.detections (\n id BIGSERIAL PRIMARY KEY,\n site_label VARCHAR(120) NOT NULL DEFAULT 'Candidate',\n geom geometry(Geometry,4326) NOT NULL,\n area_m2 DOUBLE PRECISION NOT NULL CHECK(area_m2>0),\n score DOUBLE PRECISION NOT NULL CHECK(score BETWEEN 0 AND 1),\n source TEXT NOT NULL,\n feature_hash CHAR(64),\n scene_before TEXT,\n scene_after TEXT,\n review_status TEXT NOT NULL DEFAULT 'unverified' CHECK(review_status IN ('unverified','verified','rejected')),\n reviewer VARCHAR(120),review_notes TEXT,reviewed_at TIMESTAMPTZ,\n created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n)","CREATE INDEX IF NOT EXISTS rscds_geom_idx ON rscds.detections USING GIST(geom)","CREATE INDEX IF NOT EXISTS rscds_review_idx ON rscds.detections(review_status,created_at DESC)","CREATE TABLE IF NOT EXISTS rscds.study_areas (\n id BIGSERIAL PRIMARY KEY,name TEXT NOT NULL,geom geometry(Polygon,4326) NOT NULL,\n is_sensitive BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()\n)","CREATE INDEX IF NOT EXISTS rscds_study_geom_idx ON rscds.study_areas USING GIST(geom)","CREATE TABLE IF NOT EXISTS rscds.analysis_jobs (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  bbox JSONB NOT NULL,\n  before_window TEXT NOT NULL,\n  after_window TEXT NOT NULL,\n  cloud_max DOUBLE PRECISION NOT NULL DEFAULT 35,\n  min_pixels INTEGER NOT NULL DEFAULT 9,\n  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','running','completed','failed')),\n  attempts INTEGER NOT NULL DEFAULT 0,\n  lease_token UUID,\n  lease_expires TIMESTAMPTZ,\n  result_count INTEGER NOT NULL DEFAULT 0,\n  scene_before TEXT,\n  scene_after TEXT,\n  acquired_before TIMESTAMPTZ,\n  acquired_after TIMESTAMPTZ,\n  valid_fraction DOUBLE PRECISION CHECK(valid_fraction BETWEEN 0 AND 1),\n  processor_method TEXT,\n  error_message TEXT,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n  started_at TIMESTAMPTZ,\n  finished_at TIMESTAMPTZ\n)","CREATE INDEX IF NOT EXISTS rscds_job_queue_idx ON rscds.analysis_jobs(status,created_at)"]},{"id":"002_provenance","title":"Processing provenance and job links","sql":["ALTER TABLE rscds.detections ADD COLUMN IF NOT EXISTS feature_hash CHAR(64)","ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS scene_before TEXT","ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS scene_after TEXT","ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS acquired_before TIMESTAMPTZ","ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS acquired_after TIMESTAMPTZ","ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS valid_fraction DOUBLE PRECISION","ALTER TABLE rscds.analysis_jobs ADD COLUMN IF NOT EXISTS processor_method TEXT","ALTER TABLE rscds.detections ADD COLUMN IF NOT EXISTS job_id UUID REFERENCES rscds.analysis_jobs(id)","CREATE INDEX IF NOT EXISTS rscds_detection_job_idx ON rscds.detections(job_id)"]},{"id":"003_uniqueness","title":"Run-scoped candidate fingerprint protection","sql":["CREATE UNIQUE INDEX IF NOT EXISTS rscds_job_feature_hash_idx\n ON rscds.detections(job_id,feature_hash) WHERE job_id IS NOT NULL","CREATE UNIQUE INDEX IF NOT EXISTS rscds_manual_feature_hash_idx\n ON rscds.detections(feature_hash) WHERE job_id IS NULL"]}]);
 export const checksum=m=>crypto.createHash('sha256').update(m.sql.join(';\n')).digest('hex');
+const PUBLIC_BOOTSTRAP_VERSIONS=Object.freeze(['001_core','002_provenance','003_uniqueness']);
+export function publicBootstrapState(summary){
+ const pending=summary.filter(m=>m.status==='pending').map(m=>m.id);
+ const mismatch=summary.some(m=>m.status==='checksum_mismatch');
+ const approved=pending.every(id=>PUBLIC_BOOTSTRAP_VERSIONS.includes(id));
+ const known=summary.every(m=>PUBLIC_BOOTSTRAP_VERSIONS.includes(m.id));
+ return {available:!mismatch&&approved&&known&&pending.length>0,
+  pending,closed:pending.length===0&&!mismatch&&known};
+}
+
 export function stateFor(rows=[]){
  const applied=new Map(rows.map(x=>[x.id,String(x.checksum).trim()]));
  return MIGRATIONS.map(m=>({id:m.id,title:m.title,
@@ -23,7 +33,11 @@ export async function perform(sql,body){
   const current=stateFor(await previous(tx));
   if(current.some(m=>m.status==='checksum_mismatch'))
    throw Object.assign(Error('Recorded migration checksum mismatch. Stop and investigate.'),{status:409});
-  const pending=current.filter(m=>m.status==='pending').map(m=>m.id);
+  const gate=publicBootstrapState(current);
+  if(!gate.available)throw Object.assign(
+    Error(gate.closed?'Initial database setup is complete. Public migration writes are disabled.':
+      'This migration needs a controlled operator-led deployment.'),{status:403});
+  const pending=gate.pending;
   validateApply(body,pending);
   // Fixed statements only. DDL, bookkeeping and lock all share one transaction.
   await tx.unsafe("SET LOCAL statement_timeout = '18000ms'");
