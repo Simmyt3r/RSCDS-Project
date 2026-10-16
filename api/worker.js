@@ -62,12 +62,25 @@ export default async function handler(req,res){
       return send(res,rows.length?200:409,rows[0]||{error:'Lease expired'});
     }
     const p=validatedProvenance(body.provenance);
-    const rows=await sql`UPDATE rscds.analysis_jobs SET status='completed',
-      result_count=(SELECT COUNT(*)::INT FROM rscds.detections WHERE job_id=${body.id}),
-      scene_before=${p.before},scene_after=${p.after},acquired_before=${p.early},acquired_after=${p.late},
-      valid_fraction=${p.fraction},processor_method=${p.method},
-      lease_token=NULL,lease_expires=NULL,finished_at=NOW()
-      WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running' AND lease_expires>NOW() RETURNING id,status,result_count`;
-    return send(res,rows.length?200:409,rows[0]||{error:'Lease expired'});
+    const completed=await sql.begin(async tx=>{
+      // Same row lock as batches and crash recovery ensures no incomplete evidence.
+      const active=await tx`SELECT id FROM rscds.analysis_jobs
+        WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running'
+          AND lease_expires>NOW() FOR UPDATE`;
+      if(!active.length)return null;
+      const [mismatched]=await tx`SELECT COUNT(*)::int AS count FROM rscds.detections
+        WHERE job_id=${body.id} AND (scene_before IS DISTINCT FROM ${p.before}
+          OR scene_after IS DISTINCT FROM ${p.after})`;
+      if(mismatched.count)throw Error('Uploaded candidate scenes do not match processing provenance');
+      const rows=await tx`UPDATE rscds.analysis_jobs SET status='completed',
+        result_count=(SELECT COUNT(*)::INT FROM rscds.detections WHERE job_id=${body.id}),
+        scene_before=${p.before},scene_after=${p.after},acquired_before=${p.early},
+        acquired_after=${p.late},valid_fraction=${p.fraction},processor_method=${p.method},
+        lease_token=NULL,lease_expires=NULL,finished_at=NOW()
+        WHERE id=${body.id} AND lease_token=${body.lease_token} AND status='running'
+          AND lease_expires>NOW() RETURNING id,status,result_count`;
+      return rows[0]||null;
+    });
+    return send(res,completed?200:409,completed||{error:'Lease expired'});
   }catch(e){return send(res,400,{error:String(e.message||e)});}finally{if(sql)await sql.end();}
 }

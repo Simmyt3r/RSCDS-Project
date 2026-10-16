@@ -34,10 +34,18 @@ export default async function handler(req,res){
       return send(res,rows.length?200:409,rows[0]||{error:'Only failed jobs can be retried'});
     }
     const j=validateJobRequest(body);
-    const pending=await sql`SELECT COUNT(*)::int AS count FROM rscds.analysis_jobs WHERE status IN ('queued','running')`;
-    if(pending[0].count>=5)return send(res,429,{error:'Five analyses are already queued or running. Complete them before submitting more.'});
-    const rows=await sql`INSERT INTO rscds.analysis_jobs (bbox,before_window,after_window,cloud_max,min_pixels)
-      VALUES (${sql.json(j.bbox)},${j.before},${j.after},${j.cloudMax},${j.minPixels}) RETURNING id,status,created_at`;
-    return send(res,201,{job:rows[0],message:'Queued securely. GitHub Actions scheduled worker checks for new jobs every 30 minutes; use Run workflow to start a check sooner.'});
+    const created=await sql.begin(async tx=>{
+      // Serialize count+insert so concurrent operators cannot bypass queue limits.
+      const [lock]=await tx`SELECT pg_try_advisory_xact_lock(874301,506) AS locked`;
+      if(!lock?.locked)return {busy:true};
+      const [pending]=await tx`SELECT COUNT(*)::int AS count FROM rscds.analysis_jobs WHERE status IN ('queued','running')`;
+      if(pending.count>=5)return {full:true};
+      const rows=await tx`INSERT INTO rscds.analysis_jobs (bbox,before_window,after_window,cloud_max,min_pixels)
+        VALUES (${tx.json(j.bbox)},${j.before},${j.after},${j.cloudMax},${j.minPixels}) RETURNING id,status,created_at`;
+      return {job:rows[0]};
+    });
+    if(created.busy)return send(res,409,{error:'Another submission is in progress. Retry shortly.'});
+    if(created.full)return send(res,429,{error:'Five analyses are already queued or running. Complete them before submitting more.'});
+    return send(res,201,{job:created.job,message:'Queued securely. GitHub Actions scheduled worker checks for new jobs every 30 minutes; use Run workflow to start a check sooner.'});
   }catch(e){return send(res,400,{error:String(e.message||e)});}finally{if(sql)await sql.end();}
 }
