@@ -15,10 +15,10 @@ if(cfg){
  check(cfg.buildCommand==='npm run build','Vercel build must run the preflight.');
  check(cfg.functions?.['api/*.js']?.maxDuration<=60,'API maximum duration exceeds Hobby allowance.');
 }
-for(const name of ['index.html','setup.html','app.js','map-basemap.js','navigation.js','imagery-search.js','imagery-compare.js','evidence-workspace.js','setup-wizard.js','styles.css','schema.sql']){
+for(const name of ['index.html','setup.html','app.js','map-basemap.js','navigation.js','imagery-search.js','imagery-compare.js','evidence-workspace.js','setup-wizard.js','migrations.js','styles.css','schema.sql']){
  check(fs.existsSync(file('public/'+name)),'Missing public asset: '+name);
 }
-const endpoints=['health','scenes','imagery','evidence','detections','review','jobs','worker'];
+const endpoints=['health','scenes','imagery','evidence','detections','review','jobs','worker','migrations'];
 for(const name of endpoints){
  const f='api/'+name+'.js';
  check(fs.existsSync(file(f)),'Missing API endpoint: '+f);
